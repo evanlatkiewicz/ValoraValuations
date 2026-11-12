@@ -7,6 +7,8 @@ import { APPLE, blankInputs } from "@/lib/companies";
 import { decodeAny, decodeInputs } from "@/lib/share";
 import { loadSession, saveSession } from "@/lib/session";
 import { Menu } from "./Menu";
+import { CompanyBar } from "./CompanyBar";
+import { onPrivateDeployment, PUBLIC_ORIGIN } from "@/lib/site";
 import type { MarketData } from "@/lib/market";
 import { withBeta, withPrice } from "@/lib/applyMarket";
 import type { DcfInputs, DcfResult } from "@/lib/types";
@@ -59,6 +61,8 @@ export default function Valora() {
   const [restored, setRestored] = useState(false);
   const [market, setMarket] = useState<MarketData | null>(null);
   const [marketError, setMarketError] = useState<string | null>(null);
+  const [privateLink, setPrivateLink] = useState(false);
+  useEffect(() => setPrivateLink(onPrivateDeployment()), []);
 
   // Open a shared model from the link, or pick up where this tab left off
   useEffect(() => {
@@ -261,6 +265,17 @@ export default function Valora() {
           ))}
         </nav>
       </header>
+
+      {privateLink && (
+        <div className="private-note" role="note">
+          <div className="co-inner">
+            You&rsquo;re on a private deployment link, which asks other people to log in to Vercel. Share{" "}
+            <a href={PUBLIC_ORIGIN ?? "/"}>{PUBLIC_ORIGIN?.replace("https://", "")}</a> instead. Copy share link in the menu always uses that address.
+          </div>
+        </div>
+      )}
+
+      <CompanyBar inputs={inputs} logo={market && market.ticker === inputs.company.ticker.toUpperCase() ? market.logo : null} />
 
       {notice && (
         <div className="intro">

@@ -1,4 +1,5 @@
 import { APPLE } from "./companies";
+import { isLogoUrl } from "./market";
 import type { DcfInputs, Source } from "./types";
 
 // A shared model lives entirely in the link, so links work on any host with
@@ -113,7 +114,9 @@ function fromJson(json: string): DcfInputs | null {
     ];
     const okNums = nums.every((k) => typeof m[k] === "number" && isFinite(m[k] as number));
     if (!okArrays || !okNums || !m.company) return null;
-    return { ...m, sources: restoreSources(m, m.sources as unknown as Record<string, unknown>) };
+    const company = { ...m.company };
+    if (company.logo !== undefined && !isLogoUrl(company.logo)) delete company.logo;
+    return { ...m, company, sources: restoreSources(m, m.sources as unknown as Record<string, unknown>) };
   } catch {
     return null;
   }

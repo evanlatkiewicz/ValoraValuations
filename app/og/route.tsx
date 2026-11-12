@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { readCard } from "@/lib/og";
+import { logoUrlFor, readCard } from "@/lib/og";
 
 // The preview image LinkedIn, Slack, iMessage and others show for a link.
 export const runtime = "nodejs";
@@ -10,6 +10,7 @@ const PAPER = "#eef1e8";
 const SHEET = "#f7f9f3";
 const INK = "#18201c";
 const SOFT = "#4a5650";
+const FAINT = "#7a857e";
 const RULE = "#b7c6ae";
 const GREEN = "#2f5d46";
 const RED = "#b0281f";
@@ -31,6 +32,22 @@ async function loadFonts() {
   return fonts;
 }
 
+/** Fetch the company logo and inline it, so a slow logo can't break the card. */
+async function logoData(domain: string | null): Promise<string | null> {
+  const url = logoUrlFor(domain);
+  if (!url) return null;
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(2500), next: { revalidate: 30 * 86400 } });
+    const type = (res.headers.get("content-type") ?? "").split(";")[0];
+    if (!res.ok || !/^image\/(png|jpe?g)$/.test(type)) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length > 300_000) return null;
+    return `data:${type};base64,${buf.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
 const money = (n: number) =>
   `${n < 0 ? "−" : ""}$${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -46,14 +63,23 @@ function Mark({ size }: { size: number }) {
   );
 }
 
+function Brand({ size = 40 }: { size?: number }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <Mark size={size} />
+      <div style={{ fontSize: size * 0.85, fontWeight: 800, letterSpacing: -1.2 }}>Valora</div>
+    </div>
+  );
+}
+
 function Stars({ value }: { value: number }) {
   const d = "M10 1.5l2.6 5.6 6.1.7-4.5 4.2 1.2 6-5.4-3-5.4 3 1.2-6L1.3 7.8l6.1-.7z";
   return (
-    <div style={{ display: "flex", gap: 6 }}>
+    <div style={{ display: "flex", gap: 5 }}>
       {[0, 1, 2, 3, 4].map((i) => {
         const fill = Math.max(0, Math.min(1, value - i));
         return (
-          <svg key={i} width="40" height="40" viewBox="0 0 20 20">
+          <svg key={i} width="34" height="34" viewBox="0 0 20 20">
             <defs>
               <clipPath id={`c${i}`}>
                 <rect x="0" y="0" width={20 * fill} height="20" />
@@ -68,82 +94,94 @@ function Stars({ value }: { value: number }) {
   );
 }
 
-function Frame({ children, host, note }: { children: React.ReactNode; host: string; note: string }) {
+function Footer({ host, note }: { host: string; note: string }) {
   return (
-    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: PAPER, fontFamily: "Schibsted", color: INK }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "44px 64px 28px", borderBottom: `4px solid ${INK}` }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <Mark size={52} />
-          <div style={{ fontSize: 44, fontWeight: 800, letterSpacing: -1.5 }}>Valora</div>
-        </div>
-        <div style={{ fontSize: 26, color: SOFT }}>Build a DCF from the ground up</div>
-      </div>
-      <div style={{ display: "flex", flex: 1, padding: "0 64px" }}>{children}</div>
-      <div style={{ display: "flex", justifyContent: "space-between", padding: "18px 64px 30px", borderTop: `1.5px solid ${RULE}`, fontSize: 22, color: SOFT }}>
-        <div style={{ display: "flex" }}>{note}</div>
-        <div style={{ display: "flex", fontFamily: "Plex Mono" }}>{host}</div>
-      </div>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "22px 64px", borderTop: `1.5px solid ${RULE}`, fontSize: 22, color: SOFT }}>
+      <div style={{ display: "flex" }}>{note}</div>
+      <div style={{ display: "flex", fontFamily: "Plex Mono", color: INK }}>{host}</div>
     </div>
   );
 }
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const host = url.host;
+  const host = process.env.VERCEL_PROJECT_PRODUCTION_URL ?? url.host;
   const card = readCard(url.searchParams);
   const opts = { width: 1200, height: 630, fonts: await loadFonts() };
 
   if (!card) {
     return new ImageResponse(
       (
-        <Frame host={host} note="Free to use, no sign-up">
-          <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 22 }}>
-            <div style={{ fontSize: 76, fontWeight: 800, letterSpacing: -3, lineHeight: 1.02, maxWidth: 980 }}>
+        <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: PAPER, fontFamily: "Schibsted", color: INK }}>
+          <div style={{ display: "flex", padding: "52px 64px 0" }}>
+            <Brand size={54} />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", flex: 1, padding: "0 64px", gap: 22 }}>
+            <div style={{ fontSize: 78, fontWeight: 800, letterSpacing: -3, lineHeight: 1.02, maxWidth: 1000 }}>
               Value any US company from its 10-K, one assumption at a time.
             </div>
             <div style={{ fontSize: 30, color: SOFT, maxWidth: 940, lineHeight: 1.35 }}>
               A guided discounted cash flow builder for students, with sanity checks on every input.
             </div>
           </div>
-        </Frame>
+          <Footer host={host} note="Free to use, no sign-up" />
+        </div>
       ),
       opts,
     );
   }
 
+  const logo = await logoData(card.logo);
   const upside = card.value / card.price - 1;
-  const label = [card.ticker, card.year ? `${card.year} 10-K` : ""].filter(Boolean).join(", ");
+  const meta = [card.ticker, card.year ? `${card.year} 10-K` : ""].filter(Boolean).join("   ");
+  const initial = (card.name.trim()[0] ?? "?").toUpperCase();
 
   return new ImageResponse(
     (
-      <Frame host={host} note="Open the model and change any assumption">
-        <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "space-between", gap: 40 }}>
-          <div style={{ display: "flex", flexDirection: "column", maxWidth: 680 }}>
-            <div style={{ fontSize: 58, fontWeight: 800, letterSpacing: -2, lineHeight: 1.05 }}>{card.name}</div>
-            {label && <div style={{ fontSize: 26, color: SOFT, fontFamily: "Plex Mono", marginTop: 10 }}>{label}</div>}
-            <div style={{ fontSize: 26, color: SOFT, marginTop: 34 }}>Implied value per share</div>
-            <div style={{ fontSize: 112, fontFamily: "Plex Mono", letterSpacing: -5, lineHeight: 1.05, color: card.warn ? RED : INK }}>
-              {money(card.value)}
-            </div>
-            {card.warn && (
-              <div style={{ fontSize: 24, color: RED, marginTop: 6 }}>Cash flow is negative in year 5, so this value isn&apos;t meaningful yet.</div>
+      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: PAPER, fontFamily: "Schibsted", color: INK }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "48px 64px 0" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 26 }}>
+            {logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logo} width={104} height={104} style={{ borderRadius: 22, border: `2px solid ${RULE}`, background: "#ffffff", padding: 12, objectFit: "contain" }} alt="" />
+            ) : (
+              <div style={{ width: 104, height: 104, borderRadius: 22, background: INK, color: SHEET, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 54, fontWeight: 800 }}>
+                {initial}
+              </div>
             )}
+            <div style={{ display: "flex", flexDirection: "column", maxWidth: 700 }}>
+              <div style={{ fontSize: 56, fontWeight: 800, letterSpacing: -2, lineHeight: 1.04 }}>{card.name}</div>
+              {meta && <div style={{ fontSize: 24, color: FAINT, fontFamily: "Plex Mono", marginTop: 8 }}>{meta}</div>}
+            </div>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 26, padding: "30px 34px", background: SHEET, border: `3px solid ${INK}`, minWidth: 330 }}>
+          <Brand size={40} />
+        </div>
+
+        <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "space-between", padding: "0 64px", gap: 40 }}>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <div style={{ fontSize: 26, color: SOFT }}>Implied value per share</div>
+            <div style={{ fontSize: 124, fontFamily: "Plex Mono", letterSpacing: -6, lineHeight: 1.02, color: card.warn ? RED : INK }}>{money(card.value)}</div>
+            {card.warn && <div style={{ fontSize: 23, color: RED, marginTop: 4 }}>Cash flow is negative in year 5, so this isn&apos;t meaningful yet.</div>}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 20, padding: "26px 32px", background: SHEET, border: `2.5px solid ${INK}`, borderRadius: 14, minWidth: 330 }}>
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <div style={{ fontSize: 22, color: SOFT }}>Market price</div>
-              <div style={{ fontSize: 48, fontFamily: "Plex Mono", letterSpacing: -2 }}>{money(card.price)}</div>
-              <div style={{ fontSize: 30, fontFamily: "Plex Mono", color: upside < 0 ? RED : GREEN }}>
-                {`${upside > 0 ? "+" : upside < 0 ? "−" : ""}${Math.abs(upside * 100).toFixed(1)}%`}
+              <div style={{ fontSize: 21, color: SOFT }}>Market price</div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
+                <div style={{ fontSize: 44, fontFamily: "Plex Mono", letterSpacing: -2 }}>{money(card.price)}</div>
+                <div style={{ fontSize: 26, fontFamily: "Plex Mono", color: upside < 0 ? RED : GREEN }}>
+                  {`${upside > 0 ? "+" : upside < 0 ? "−" : ""}${Math.abs(upside * 100).toFixed(1)}%`}
+                </div>
               </div>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: `1.5px solid ${RULE}`, paddingTop: 20 }}>
-              <div style={{ fontSize: 22, color: SOFT }}>Model quality</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: `1.5px solid ${RULE}`, paddingTop: 18 }}>
+              <div style={{ fontSize: 21, color: SOFT }}>Model quality</div>
               <Stars value={card.stars} />
             </div>
           </div>
         </div>
-      </Frame>
+
+        <Footer host={host} note="Discounted cash flow model. Open it and change any assumption." />
+      </div>
     ),
     opts,
   );

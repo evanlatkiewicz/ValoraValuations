@@ -411,3 +411,22 @@ h1, h2, h3, p { margin: 0; }
   .sens th, .sens td { padding: 6px 8px; }
   .price-stats { flex-direction: column; }
 }
+
+/* ---------- Company bar ---------- */
+.co-bar { background: var(--sheet); border-bottom: 1px solid var(--rule-strong); }
+.co-inner { max-width: 1360px; margin: 0 auto; padding: 16px 24px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 16px; align-items: center; }
+.co-logo { display: block; border-radius: 10px; border: 1px solid var(--rule); background: #fff; object-fit: contain; padding: 6px; flex: none; }
+.co-mono { display: grid; place-items: center; background: var(--ink); color: var(--sheet); font-weight: 800; padding: 0; border-color: var(--ink); }
+.co-name { font-size: var(--step-2); font-weight: 800; letter-spacing: -0.025em; line-height: 1.1; }
+.co-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; margin-top: 4px; font-size: var(--step--1); color: var(--ink-soft); }
+.co-ticker { font-family: var(--mono); font-weight: 600; color: var(--ink); background: var(--paper-deep); border: 1px solid var(--rule); border-radius: 3px; padding: 1px 7px; }
+.co-price { display: grid; justify-items: end; }
+.co-price-label { font-size: var(--step--1); color: var(--ink-soft); }
+.co-price-value { font-family: var(--mono); font-size: var(--step-2); font-weight: 600; letter-spacing: -0.02em; }
+.private-note { background: var(--amber-tint); border-bottom: 1px solid var(--amber); }
+.private-note .co-inner { display: block; padding: 10px 24px; font-size: var(--step--1); }
+@media (max-width: 820px) {
+  .co-inner { grid-template-columns: auto minmax(0, 1fr); padding: 12px 16px; }
+  .co-price { grid-column: 1 / -1; justify-items: start; grid-template-columns: auto auto; gap: 8px; align-items: baseline; }
+  .co-name { font-size: var(--step-1); }
+}

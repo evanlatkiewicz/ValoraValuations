@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { computeBeta, range52, type Bar, type MarketData } from "@/lib/market";
+import { computeBeta, isLogoUrl, range52, type Bar, type MarketData } from "@/lib/market";
 
 // Daily prices from Twelve Data. One request per ticker (cached for hours),
 // plus one shared request for the S&P 500 ETF used to calculate beta.
@@ -31,6 +31,18 @@ async function daily(symbol: string, key: string, size: number, revalidate: numb
     .reverse(); // oldest first
 }
 
+async function logo(symbol: string, key: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://api.twelvedata.com/logo?symbol=${encodeURIComponent(symbol)}&apikey=${key}`, {
+      next: { revalidate: 30 * 86400 }, // logos rarely change
+    });
+    const json = await res.json();
+    return isLogoUrl(json?.url) ? json.url : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(req: Request) {
   const raw = new URL(req.url).searchParams.get("ticker")?.trim().toUpperCase() ?? "";
   if (!/^[A-Z][A-Z0-9.-]{0,9}$/.test(raw)) {
@@ -43,9 +55,10 @@ export async function GET(req: Request) {
   const symbol = raw.replace("-", "."); // BRK-B -> BRK.B
 
   try {
-    const [bars, spy] = await Promise.all([
+    const [bars, spy, logoUrl] = await Promise.all([
       daily(symbol, key, 1300, 6 * 3600),
       daily(MARKET_PROXY, key, 600, 12 * 3600).catch(() => [] as Bar[]),
+      logo(symbol, key),
     ]);
     if (bars.length < 5) throw new PriceError(404, `No price data found for ${raw}.`);
     const { high, low } = range52(bars);
@@ -56,6 +69,7 @@ export async function GET(req: Request) {
       high52: high,
       low52: low,
       beta: spy.length ? computeBeta(bars, spy) : null,
+      logo: logoUrl,
       source: "Twelve Data",
     };
     return NextResponse.json(data, {

@@ -10,7 +10,7 @@ export function withPrice(inputs: DcfInputs, m: MarketData): DcfInputs {
   return {
     ...inputs,
     sharePrice: Math.round(m.last.c * 100) / 100,
-    company: { ...inputs.company, priceDate: fmtDate(m.last.d) },
+    company: { ...inputs.company, priceDate: fmtDate(m.last.d), logo: m.logo ?? inputs.company.logo },
     sources: { ...inputs.sources, sharePrice: { kind: "market", note: `Last close on ${fmtDate(m.last.d)}, from ${m.source}.` } },
   };
 }

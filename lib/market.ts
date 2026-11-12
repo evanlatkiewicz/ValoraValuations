@@ -20,7 +20,13 @@ export interface MarketData {
   high52: number;
   low52: number;
   beta: Beta | null;
+  logo: string | null;
   source: string;
+}
+
+/** Only logos from the data provider are trusted (they're drawn on the server too). */
+export function isLogoUrl(u: unknown): u is string {
+  return typeof u === "string" && /^https:\/\/api\.twelvedata\.com\/logo\/[A-Za-z0-9.-]+$/.test(u);
 }
 
 /** Monday of the week a date falls in, as YYYY-MM-DD (UTC). */

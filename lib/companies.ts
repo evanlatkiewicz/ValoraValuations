@@ -30,6 +30,7 @@ export const APPLE: DcfInputs = {
     ticker: "AAPL",
     baseYearLabel: "FY2026",
     priceDate: "Nov 10, 2026",
+    logo: "https://api.twelvedata.com/logo/apple.com",
   },
   history: [
     { label: "FY2024", revenue: 391035, ebit: 123216, da: 11445, capex: 9447 },

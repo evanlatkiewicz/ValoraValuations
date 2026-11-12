@@ -11,7 +11,12 @@ export interface CardSummary {
   price: number;
   stars: number;
   warn: boolean; // the model burns cash forever, so the value isn't meaningful
+  logo: string | null; // logo domain, like "apple.com"
 }
+
+const LOGO_PREFIX = "https://api.twelvedata.com/logo/";
+export const logoUrlFor = (domain: string | null) =>
+  domain && /^[A-Za-z0-9.-]{3,80}$/.test(domain) ? LOGO_PREFIX + domain : null;
 
 export function summarize(inputs: DcfInputs): CardSummary | null {
   if (!(inputs.sharePrice > 0 && inputs.sharesOutstanding > 0)) return null;
@@ -26,6 +31,7 @@ export function summarize(inputs: DcfInputs): CardSummary | null {
     price: inputs.sharePrice,
     stars: starRating(checks),
     warn: r.years[4].ufcf <= 0 || r.enterpriseValue <= 0,
+    logo: inputs.company.logo?.startsWith(LOGO_PREFIX) ? inputs.company.logo.slice(LOGO_PREFIX.length) : null,
   };
 }
 
@@ -40,6 +46,7 @@ export function cardQuery(s: CardSummary): string {
     s: String(s.stars),
   });
   if (s.warn) q.set("w", "1");
+  if (s.logo) q.set("l", s.logo);
   return q.toString();
 }
 
@@ -56,5 +63,6 @@ export function readCard(q: URLSearchParams): CardSummary | null {
     price,
     stars: Number.isFinite(stars) ? Math.min(5, Math.max(0, stars)) : 0,
     warn: q.get("w") === "1",
+    logo: logoUrlFor(q.get("l")) ? q.get("l") : null,
   };
 }
