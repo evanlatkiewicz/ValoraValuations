@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { inputsFromFacts, fiscalLabel, SecDataError, type CompanyFacts } from "./sec";
+import { inputsFromFacts, fiscalLabel, SecDataError, tidyName, type CompanyFacts } from "./sec";
 import { APPLE } from "./companies";
 import { runDcf } from "./dcf";
 
@@ -50,5 +50,15 @@ describe("SEC loader", () => {
 
   it("leaves the share price blank for the user", () => {
     expect(inputsFromFacts(load("KO"), "KO").inputs.sharePrice).toBe(0);
+  });
+});
+
+describe("company names", () => {
+  it("drops SEC filing tags and fixes all caps", () => {
+    expect(tidyName("Costco Wholesale Corp /new")).toBe("Costco Wholesale Corp");
+    expect(tidyName("NIKE, Inc.")).toBe("NIKE, Inc.");
+    expect(tidyName("MICROSOFT CORP")).toBe("Microsoft Corp");
+    expect(tidyName("EXAMPLE HOLDINGS INC /DE/")).toBe("Example Holdings Inc");
+    expect(tidyName("Apple Inc.")).toBe("Apple Inc.");
   });
 });

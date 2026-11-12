@@ -156,7 +156,9 @@ function shares(f: CompanyFacts, baseEnd: string): { value: number; note: string
 }
 
 /** "MICROSOFT CORP" -> "Microsoft Corp". Mixed-case names are left alone. */
-export function tidyName(n: string): string {
+export function tidyName(raw: string): string {
+  // SEC names sometimes end in filing tags like "/NEW", "/DE/" or "\DE\"
+  const n = raw.replace(/\s*[\\/][A-Za-z]{1,4}[\\/]?\s*$/g, "").replace(/\s*[\\/][A-Za-z]{1,4}[\\/]?\s*$/g, "").trim();
   if (n !== n.toUpperCase()) return n;
   const keep = new Set(["INC", "LLC", "PLC", "NV", "SA", "AG", "LP", "CO", "&"]);
   return n
