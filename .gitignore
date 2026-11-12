@@ -8,3 +8,5 @@ next-env.d.ts
 verification/recalc/
 
 verification/export/
+
+verification/options-check.xlsx
