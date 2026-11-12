@@ -7,12 +7,25 @@ import { publicOrigin } from "@/lib/site";
 import { loadSession } from "@/lib/session";
 import type { DcfInputs } from "@/lib/types";
 import type { ScenarioId } from "@/lib/scenarios";
+import type { OptionModel } from "@/lib/optionModel";
 
 /**
  * The site menu. On the builder it receives the live model; on the Learn and
  * About pages it falls back to the model saved for this browser tab.
  */
-export function Menu({ inputs, canExport = true, scenario = "base" }: { inputs?: DcfInputs; canExport?: boolean; scenario?: ScenarioId }) {
+export function Menu({
+  inputs,
+  canExport = true,
+  scenario = "base",
+  optionModel,
+}: {
+  inputs?: DcfInputs;
+  canExport?: boolean;
+  scenario?: ScenarioId;
+  /** Set on the options page. Sharing and Excel for options come later. */
+  optionModel?: OptionModel | null;
+}) {
+  const onOptions = optionModel !== undefined;
   // "closing" keeps the panel on screen while its exit animation plays
   const [phase, setPhase] = useState<"closed" | "open" | "closing">("closed");
   const open = phase === "open";
@@ -21,7 +34,7 @@ export function Menu({ inputs, canExport = true, scenario = "base" }: { inputs?:
   const close = () => setPhase((p) => (p === "open" ? (reduced() ? "closed" : "closing") : p));
   const toggle = () => {
     if (phase === "open") return close();
-    setAvailable(inputs ? canExport : !!loadSession()?.inputs);
+    setAvailable(onOptions ? false : inputs ? canExport : !!loadSession()?.inputs);
     setPhase("open");
   };
   const [status, setStatus] = useState<string | null>(null);

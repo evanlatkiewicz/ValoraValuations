@@ -2,13 +2,27 @@
 
 import { useEffect, useRef } from "react";
 
-const PICKS = ["AAPL", "MSFT", "NVDA", "COST", "KO", "NKE"];
+export interface StartCopy {
+  title: string;
+  lede: string;
+  button: string;
+  picks: string[];
+  steps: [string, string][];
+  blank?: string; // text before the blank-model link; omit to hide it
+}
 
-const STEPS: [string, string][] = [
-  ["Inputs", "Check the numbers pulled from the 10-K and set your assumptions, one step at a time."],
-  ["Model", "See every line of the DCF compiled, and click any number to see its formula."],
-  ["Valuation", "Get a value per share with bull, base and bear cases, sensitivity tables and sanity checks."],
-];
+export const DCF_COPY: StartCopy = {
+  title: "Let\u2019s get started.",
+  lede: "Enter a stock ticker. Valora pulls the company\u2019s last three years from its 10-K, adds today\u2019s share price, and walks you through valuing it.",
+  button: "Value this company",
+  picks: ["AAPL", "MSFT", "NVDA", "COST", "KO", "NKE"],
+  steps: [
+    ["Inputs", "Check the numbers pulled from the 10-K and set your assumptions, one step at a time."],
+    ["Model", "See every line of the DCF compiled, and click any number to see its formula."],
+    ["Valuation", "Get a value per share with bull, base and bear cases, sensitivity tables and sanity checks."],
+  ],
+  blank: "Prefer to type in the numbers yourself?",
+};
 
 export function StartScreen({
   ticker,
@@ -18,13 +32,15 @@ export function StartScreen({
   error,
   onBlank,
   resume,
+  copy = DCF_COPY,
 }: {
+  copy?: StartCopy;
   ticker: string;
   setTicker: (t: string) => void;
   onLoad: (t: string) => void;
   loading: string | null;
   error: string | null;
-  onBlank: () => void;
+  onBlank?: () => void;
   resume: { name: string; go: () => void } | null;
 }) {
   const input = useRef<HTMLInputElement>(null);
@@ -35,11 +51,8 @@ export function StartScreen({
   return (
     <main className="start">
       <div className="start-inner">
-        <h1 className="start-title">Let&rsquo;s get started.</h1>
-        <p className="start-lede">
-          Enter a stock ticker. Valora pulls the company&rsquo;s last three years from its 10-K, adds today&rsquo;s share price, and walks
-          you through valuing it.
-        </p>
+        <h1 className="start-title">{copy.title}</h1>
+        <p className="start-lede">{copy.lede}</p>
 
         <form
           className="start-form"
@@ -63,7 +76,7 @@ export function StartScreen({
             aria-describedby="start-hint"
           />
           <button className="btn start-btn" type="submit" disabled={!!loading || !ticker.trim()}>
-            {loading ? "Loading" : "Value this company"}
+            {loading ? "Loading" : copy.button}
           </button>
         </form>
 
@@ -78,7 +91,7 @@ export function StartScreen({
           ) : (
             <span className="start-picks">
               Or try one:
-              {PICKS.map((t) => (
+              {copy.picks.map((t) => (
                 <button key={t} type="button" className="pick" onClick={() => onLoad(t)}>
                   {t}
                 </button>
@@ -94,7 +107,7 @@ export function StartScreen({
         )}
 
         <ol className="start-steps" aria-label="What happens next">
-          {STEPS.map(([t, d], i) => (
+          {copy.steps.map(([t, d], i) => (
             <li key={t}>
               <span className="start-n">{i + 1}</span>
               <div>
@@ -105,10 +118,12 @@ export function StartScreen({
           ))}
         </ol>
 
-        <p className="start-blank">
-          Prefer to type in the numbers yourself?{" "}
-          <button className="linkbtn" onClick={onBlank}>Start from a blank model</button>
-        </p>
+        {copy.blank && onBlank && (
+          <p className="start-blank">
+            {copy.blank}{" "}
+            <button className="linkbtn" onClick={onBlank}>Start from a blank model</button>
+          </p>
+        )}
       </div>
     </main>
   );

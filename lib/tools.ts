@@ -24,7 +24,7 @@ export const TOOLS: Tool[] = [
     method: "Black-Scholes",
     href: "/options",
     blurb: "Price a call or put from the live share price, volatility and Treasury yield, with the Greeks and implied volatility.",
-    ready: false,
+    ready: true,
   },
   {
     id: "bonds",

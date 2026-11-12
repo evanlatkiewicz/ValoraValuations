@@ -337,3 +337,21 @@ export function trimFacts(f: CompanyFacts, since = "2019-01-01"): CompanyFacts {
   }
   return { cik: f.cik, entityName: f.entityName, facts: { "us-gaap": gaap, dei } };
 }
+
+/**
+ * Dividends per share over the most recent fiscal year, from the 10-K.
+ * Returns null when the company doesn't report one (or pays none).
+ */
+export function dividendInfo(f: CompanyFacts): { dps: number; year: string } | null {
+  const concepts = ["CommonStockDividendsPerShareDeclared", "CommonStockDividendsPerShareCashPaid"];
+  let best: { dps: number; year: string; end: string } | null = null;
+  for (const c of concepts) {
+    const facts = f.facts["us-gaap"]?.[c]?.units?.["USD/shares"] ?? [];
+    const yearly = annual(facts);
+    const end = latestKey(yearly);
+    if (end && (!best || end > best.end)) best = { dps: yearly.get(end)!.val, year: fiscalLabel(end), end };
+  }
+  if (!best || !(best.dps > 0)) return null;
+  const age = days(best.end, new Date().toISOString().slice(0, 10));
+  return age > 550 ? null : { dps: best.dps, year: best.year };
+}
