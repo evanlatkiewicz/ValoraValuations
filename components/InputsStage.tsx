@@ -7,6 +7,7 @@ import { LiveRead } from "./LiveRead";
 import { worstLevelFor } from "@/lib/checks";
 import { baseYear, projectionLabels } from "@/lib/dcf";
 import { money, moneyB, mult, pct } from "@/lib/format";
+import { fmtDate } from "@/lib/market";
 import type { DcfInputs, HistoricalYear } from "@/lib/types";
 
 const STEPS = [
@@ -455,7 +456,14 @@ function BalanceSheet({ ctx }: { ctx: Ctx }) {
               ctx={ctx}
               id="sharePrice"
               extra={
-                i.company.ticker ? (
+                ctx.market && ctx.market.ticker === i.company.ticker.toUpperCase() ? (
+                  <span className="market-note">
+                    <span className="ref">Last close: ${ctx.market.last.c.toFixed(2)} on {fmtDate(ctx.market.last.d)}</span>
+                    {Math.abs(ctx.market.last.c - i.sharePrice) > 0.005 && (
+                      <button className="btn ghost small" onClick={ctx.applyPrice}>Use latest price</button>
+                    )}
+                  </span>
+                ) : i.company.ticker ? (
                   <a href={`https://finance.yahoo.com/quote/${encodeURIComponent(i.company.ticker)}`} target="_blank" rel="noreferrer">
                     Look up {i.company.ticker}&rsquo;s price
                   </a>
@@ -519,7 +527,20 @@ function DiscountRate({ ctx }: { ctx: Ctx }) {
           help="How much the stock moves with the market. 1.0 moves with it."
           dot={lvl("beta")}
           input={<NumInput kind="num" label="Beta" level={lvl("beta")} value={i.beta} onChange={(n) => set("beta", n)} />}
-          notes={<Notes ctx={ctx} id="beta" />}
+          notes={
+            <Notes
+              ctx={ctx}
+              id="beta"
+              extra={
+                ctx.market?.beta && ctx.market.ticker === i.company.ticker.toUpperCase() && Math.abs(ctx.market.beta.adjusted - i.beta) > 0.005 ? (
+                  <span className="market-note">
+                    <span className="ref">Calculated from prices: {ctx.market.beta.adjusted.toFixed(2)}</span>
+                    <button className="btn ghost small" onClick={ctx.applyBeta}>Use calculated beta</button>
+                  </span>
+                ) : undefined
+              }
+            />
+          }
         />
         <Field
           label="Equity risk premium"

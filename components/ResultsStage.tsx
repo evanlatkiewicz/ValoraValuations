@@ -5,6 +5,7 @@ import type { Ctx } from "./Valora";
 import { LiveRead } from "./LiveRead";
 import { Dot, Stars } from "./ui";
 import { C_FCF, C_PV, FcfChart, Waterfall } from "./charts";
+import { PriceChart } from "./PriceChart";
 import { reverseDcf, sensitivity } from "@/lib/dcf";
 import { mult, pct, price, signedPct } from "@/lib/format";
 
@@ -83,6 +84,10 @@ export function ResultsStage({ ctx }: { ctx: Ctx }) {
             Model quality: {checks.filter((c) => c.level === "good").length} of {checks.length} checks green
           </span>
         </div>
+
+        {ctx.market && ctx.market.ticker === inp.company.ticker.toUpperCase() && (
+          <PriceChart data={ctx.market} value={r.impliedPrice} ticker={inp.company.ticker} />
+        )}
 
         <div className="charts" style={{ marginTop: 28 }}>
           <div className="chart-box">

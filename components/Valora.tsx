@@ -7,6 +7,8 @@ import { APPLE, blankInputs } from "@/lib/companies";
 import { decodeAny, decodeInputs } from "@/lib/share";
 import { loadSession, saveSession } from "@/lib/session";
 import { Menu } from "./Menu";
+import type { MarketData } from "@/lib/market";
+import { withBeta, withPrice } from "@/lib/applyMarket";
 import type { DcfInputs, DcfResult } from "@/lib/types";
 import { Mark } from "./ui";
 import { InputsStage } from "./InputsStage";
@@ -24,6 +26,10 @@ export interface Ctx {
   missing: string[];
   update: (patch: Partial<DcfInputs>, fields: string[]) => void;
   go: (stage: Stage, step?: number) => void;
+  market: MarketData | null;
+  marketError: string | null;
+  applyPrice: () => void;
+  applyBeta: () => void;
 }
 
 const STAGES: { id: Stage; label: string }[] = [
@@ -51,6 +57,8 @@ export default function Valora() {
   const [baseline, setBaseline] = useState<DcfInputs>(APPLE);
   const [showIntro, setShowIntro] = useState(true);
   const [restored, setRestored] = useState(false);
+  const [market, setMarket] = useState<MarketData | null>(null);
+  const [marketError, setMarketError] = useState<string | null>(null);
 
   // Open a shared model from the link, or pick up where this tab left off
   useEffect(() => {
@@ -124,6 +132,35 @@ export default function Valora() {
     history.replaceState(null, "", window.location.pathname);
   };
 
+  const fetchMarket = useCallback(async (t: string): Promise<MarketData | null> => {
+    try {
+      const res = await fetch(`/api/prices?ticker=${encodeURIComponent(t)}`);
+      const data = await res.json();
+      if (!res.ok) {
+        setMarketError(data.error ?? "Price data isn't available right now.");
+        return null;
+      }
+      setMarket(data as MarketData);
+      setMarketError(null);
+      return data as MarketData;
+    } catch {
+      setMarketError("Price data isn't available right now.");
+      return null;
+    }
+  }, []);
+
+  // Fetch prices for the chart whenever the company changes
+  const tickerNow = inputs.company.ticker;
+  useEffect(() => {
+    if (!restored || !tickerNow || preset === "blank") return;
+    if (market?.ticker === tickerNow.toUpperCase()) return;
+    setMarket(null);
+    fetchMarket(tickerNow);
+  }, [tickerNow, preset, restored, market?.ticker, fetchMarket]);
+
+  const applyPrice = () => market && setInputs((prev) => withPrice(prev, market));
+  const applyBeta = () => market && setInputs((prev) => withBeta(prev, market));
+
   const loadTicker = async (e: React.FormEvent) => {
     e.preventDefault();
     const t = ticker.trim().toUpperCase();
@@ -137,7 +174,9 @@ export default function Valora() {
         setNotice({ tone: "error", text: data.error ?? "Something went wrong loading that ticker." });
         return;
       }
-      const loaded = data.inputs as DcfInputs;
+      let loaded = data.inputs as DcfInputs;
+      const m = await fetchMarket(loaded.company.ticker);
+      if (m) loaded = withBeta(withPrice(loaded, m), m);
       setInputs(loaded);
       setBaseline(loaded);
       setPreset("loaded");
@@ -147,7 +186,9 @@ export default function Valora() {
       history.replaceState(null, "", window.location.pathname);
       setNotice({
         tone: "info",
-        text: `Loaded ${loaded.company.name} from its ${loaded.company.baseYearLabel} 10-K. Growth and margins start from the company's recent history, so treat them as a first draft. Add today's share price in the Balance sheet step to see a value.`,
+        text: m
+          ? `Loaded ${loaded.company.name} from its ${loaded.company.baseYearLabel} 10-K, with the latest share price${m.beta ? " and a beta calculated from two years of prices" : ""}. Growth and margins start from the company's recent history, so treat them as a first draft.`
+          : `Loaded ${loaded.company.name} from its ${loaded.company.baseYearLabel} 10-K. Growth and margins start from the company's recent history, so treat them as a first draft. Add today's share price in the Balance sheet step to see a value.`,
         warnings: data.warnings,
       });
     } catch {
@@ -163,7 +204,7 @@ export default function Valora() {
     setNotice(null);
   };
 
-  const ctx: Ctx = { inputs, result, checks, stars, ready, missing, update, go };
+  const ctx: Ctx = { inputs, result, checks, stars, ready, missing, update, go, market, marketError, applyPrice, applyBeta };
   const name = inputs.company.name || "Untitled company";
 
   return (
