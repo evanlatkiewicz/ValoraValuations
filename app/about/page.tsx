@@ -61,7 +61,7 @@ export default function Page() {
 
       <h2>Sanity checks and the star rating</h2>
       <p>
-        Valora runs 14 checks on your inputs and results. Each one is green (looks reasonable), yellow (worth a second look) or red (likely a
+        Valora runs about 15 checks on your inputs and results. Each one is green (looks reasonable), yellow (worth a second look) or red (likely a
         problem). Some examples:
       </p>
       <table>
@@ -75,6 +75,7 @@ export default function Page() {
           <tr><td>Implied exit multiple</td><td>5x to 20x</td><td>3x to 5x, or 20x to 30x</td><td>Outside that</td></tr>
           <tr><td>Margin expansion</td><td>Up to 5 points</td><td>5 to 12 points</td><td>More than 12 points, or above 60%</td></tr>
           <tr><td>Growth fade into terminal</td><td>Gap up to 5 points</td><td>5 to 10 points</td><td>More than 10 points</td></tr>
+          <tr><td>Free cash flow</td><td>Positive every year</td><td>Negative early, positive by year 5</td><td>Still negative in year 5</td></tr>
         </tbody>
       </table>
       <p>

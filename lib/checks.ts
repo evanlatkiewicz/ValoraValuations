@@ -53,12 +53,14 @@ export function runChecks(inputs: DcfInputs, r: DcfResult): Check[] {
     checks.push({ id: "tgr", title: "Terminal growth rate", level, message, fields: ["terminalGrowth"] });
 
     const m = r.terminal.impliedExitMultiple;
-    const lm = band(m, [5, 20], [3, 30]);
+    const lm = m > 0 ? band(m, [5, 20], [3, 30]) : "bad";
     checks.push({
       id: "implied-multiple",
       title: "Implied exit multiple",
       level: r.terminal.valid ? lm : "bad",
-      message: r.terminal.valid
+      message: r.terminal.valid && m <= 0
+        ? `The terminal value is negative because year 5 free cash flow is negative, so there's no meaningful multiple.`
+        : r.terminal.valid
         ? `Your terminal value works out to ${m.toFixed(1)}x final-year EBITDA. ${
             lm === "good"
               ? "That is a reasonable multiple for a mature business."
@@ -86,6 +88,61 @@ export function runChecks(inputs: DcfInputs, r: DcfResult): Check[] {
         lg === "good" ? "That is believable." : "That is hard to defend for any company over the very long run."
       }`,
       fields: ["exitMultiple"],
+    });
+  }
+
+  // Free cash flow sign. A DCF needs positive cash flow by the final year,
+  // or the terminal value assumes losses forever.
+  const fcf = r.years.map((y) => y.ufcf);
+  const lastFcf = fcf[fcf.length - 1];
+  const negYears = fcf.filter((x) => x <= 0).length;
+  if (lastFcf <= 0) {
+    checks.push({
+      id: "fcf",
+      title: "Free cash flow",
+      level: "bad",
+      message:
+        inputs.terminalMethod === "gordon"
+          ? `Free cash flow is still negative in year 5, so the terminal value assumes the company burns cash forever. That makes the valuation meaningless. Raise the operating margin, lower capex toward D&A, or add growth so the business generates cash by year 5.`
+          : `Free cash flow is still negative in year 5. The exit multiple can mask that, but a business that never generates cash isn't worth much. Check margins and capex.`,
+      fields: ["ebitMargin", "capexPct", "revenueGrowth"],
+    });
+  } else if (negYears > 0) {
+    checks.push({
+      id: "fcf",
+      title: "Free cash flow",
+      level: "warn",
+      message: `Free cash flow is negative in ${negYears} of the 5 years before turning positive. That's normal for a company investing heavily, but the value now leans even more on the terminal value.`,
+      fields: ["ebitMargin", "capexPct"],
+    });
+  } else {
+    checks.push({
+      id: "fcf",
+      title: "Free cash flow",
+      level: "good",
+      message: "Free cash flow is positive in every projected year.",
+      fields: [],
+    });
+  }
+  if (r.enterpriseValue <= 0) {
+    checks.push({
+      id: "ev",
+      title: "Enterprise value",
+      level: "bad",
+      message: `The model gives a negative enterprise value, which means the operating business destroys value under these assumptions. Any value per share is coming from the cash on the balance sheet, not from the business.`,
+      fields: ["ebitMargin", "capexPct"],
+    });
+  }
+
+  // Heavy reinvestment with no growth
+  const avgGrowth = inputs.revenueGrowth.reduce((a, b) => a + b, 0) / inputs.revenueGrowth.length;
+  if (avgGrowth < 0.02 && inputs.capexPct > inputs.daPct * 1.5) {
+    checks.push({
+      id: "capex-growth",
+      title: "Capex vs. growth",
+      level: "warn",
+      message: `Capex is ${(inputs.capexPct / Math.max(inputs.daPct, 1e-9)).toFixed(1)}x D&A while revenue barely grows. Companies spend well above D&A to grow. If you expect little growth, capex near D&A is more consistent. If you expect the spending to pay off, add the growth.`,
+      fields: ["capexPct", "revenueGrowth"],
     });
   }
 

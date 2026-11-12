@@ -394,3 +394,5 @@ h1, h2, h3, p { margin: 0; }
 }
 .doc-nav > ol { border-left: none; }
 .doc-nav > ol > li + li .group { padding-top: 18px; }
+
+.verdict .warn-say { color: var(--red); border-left: 3px solid var(--red); padding-left: 12px; }

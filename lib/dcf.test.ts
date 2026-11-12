@@ -85,3 +85,14 @@ describe("share links", () => {
     expect(decodeInputs("not-a-model")).toBeNull();
   });
 });
+
+describe("cash-burning models", () => {
+  it("flags negative final-year free cash flow in red", () => {
+    const burn = { ...APPLE, ebitMargin: [0.02, 0.02, 0.02, 0.02, 0.02], capexPct: 0.08 };
+    const r = runDcf(burn);
+    expect(r.years[4].ufcf).toBeLessThan(0);
+    const checks = runChecks(burn, r);
+    expect(checks.find((c) => c.id === "fcf")?.level).toBe("bad");
+    expect(starRating(checks)).toBeLessThanOrEqual(3);
+  });
+});

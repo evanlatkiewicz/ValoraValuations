@@ -202,6 +202,10 @@ export function inputsFromFacts(f: CompanyFacts, ticker: string): LoadResult {
   }));
   const base = history.at(-1)!;
   if (!base.da) warnings.push("D&A wasn't found in the filing data. Enter it from the cash flow statement.");
+  const daConcept = pick(f, C.da, "annual")?.concept;
+  if (base.da && daConcept === "Depreciation") {
+    warnings.push("This company only reports depreciation in the standard data, so amortization may be missing from D&A. Check the cash flow statement and adjust it in step 1 if needed.");
+  }
   if (!base.capex) warnings.push("Capex wasn't found in the filing data. Enter it from the cash flow statement.");
 
   // Balance sheet at base year end

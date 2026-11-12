@@ -63,10 +63,17 @@ export function ResultsStage({ ctx }: { ctx: Ctx }) {
             <div className="delta">{price(inp.sharePrice)}</div>
             <div className={`num ${below ? "neg" : ""}`} style={{ fontWeight: 600, marginTop: 4 }}>{signedPct(r.upside)}</div>
           </div>
-          <p className="say">
-            Based on your assumptions, {name} is worth {price(r.impliedPrice)} a share, {pct(Math.abs(r.upside), 0)}{" "}
-            {below ? "below" : "above"} where it trades. Before trusting that, look at what drives it and how sensitive it is.
-          </p>
+          {r.years[4].ufcf <= 0 || r.enterpriseValue <= 0 ? (
+            <p className="say warn-say">
+              Don&rsquo;t trust this number yet. Free cash flow is still negative in year 5, so the model assumes {name} burns cash forever,
+              and the value mostly reflects the cash on its balance sheet. See the red checks below.
+            </p>
+          ) : (
+            <p className="say">
+              Based on your assumptions, {name} is worth {price(r.impliedPrice)} a share, {pct(Math.abs(r.upside), 0)}{" "}
+              {below ? "below" : "above"} where it trades. Before trusting that, look at what drives it and how sensitive it is.
+            </p>
+          )}
         </div>
 
         <div className="stars-line" style={{ marginTop: 18 }}>
