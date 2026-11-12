@@ -1,5 +1,14 @@
 import type { DcfInputs } from "./types";
 
+/** Market-wide inputs shared by every company. Update these periodically. */
+export const MARKET = {
+  riskFreeRate: 0.05,
+  riskFreeNote: "10-year Treasury was around 5.0% in late October 2026. Check today's yield.",
+  equityRiskPremium: 0.0425,
+  erpNote: "Damodaran's implied US ERP was about 4.2% to 4.3% in 2026.",
+  erpUrl: "https://pages.stern.nyu.edu/~adamodar/",
+};
+
 const FY26_RELEASE =
   "https://www.sec.gov/Archives/edgar/data/0000320193/000032019326000024/a8-kex991q4202609262026.htm";
 const FY25_RELEASE = "https://www.apple.com/newsroom/pdfs/fy2025-q4/FY25_Q4_Consolidated_Financial_Statements.pdf";

@@ -40,7 +40,10 @@ function missingFields(inputs: DcfInputs): string[] {
 
 export default function Valora() {
   const [inputs, setInputs] = useState<DcfInputs>(APPLE);
-  const [preset, setPreset] = useState<"apple" | "blank" | "shared">("apple");
+  const [preset, setPreset] = useState<"apple" | "blank" | "shared" | "loaded">("apple");
+  const [ticker, setTicker] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [notice, setNotice] = useState<{ tone: "info" | "error"; text: string; warnings?: string[] } | null>(null);
   const [stage, setStage] = useState<Stage>("inputs");
   const [step, setStep] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -94,11 +97,45 @@ export default function Valora() {
   const choose = (v: string) => {
     if (v === "apple") setInputs(APPLE);
     if (v === "blank") setInputs(blankInputs());
-    setPreset(v as typeof preset);
+    if (v === "apple" || v === "blank") setPreset(v);
     setStage("inputs");
     setStep(0);
     setCopied(false);
+    setNotice(null);
     history.replaceState(null, "", window.location.pathname);
+  };
+
+  const loadTicker = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const t = ticker.trim().toUpperCase();
+    if (!t) return;
+    setLoading(true);
+    setNotice(null);
+    try {
+      const res = await fetch(`/api/company?ticker=${encodeURIComponent(t)}`);
+      const data = await res.json();
+      if (!res.ok) {
+        setNotice({ tone: "error", text: data.error ?? "Something went wrong loading that ticker." });
+        return;
+      }
+      const loaded = data.inputs as DcfInputs;
+      setInputs(loaded);
+      setPreset("loaded");
+      setStage("inputs");
+      setStep(0);
+      setCopied(false);
+      setShowIntro(false);
+      history.replaceState(null, "", window.location.pathname);
+      setNotice({
+        tone: "info",
+        text: `Loaded ${loaded.company.name} from its ${loaded.company.baseYearLabel} 10-K. Growth and margins start from the company's recent history, so treat them as a first draft. Add today's share price in the Balance sheet step to see a value.`,
+        warnings: data.warnings,
+      });
+    } catch {
+      setNotice({ tone: "error", text: "Couldn't reach the server. Check your connection and try again." });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const share = async () => {
@@ -124,14 +161,30 @@ export default function Valora() {
             <span className="brand-name">Valora</span>
             <span className="brand-sub">Build a DCF from the ground up</span>
           </a>
-          <label className="company-pick">
-            Company
-            <select value={preset} onChange={(e) => choose(e.target.value)}>
-              <option value="apple">Apple (AAPL), FY2026 10-K</option>
+          <div className="company-pick">
+            <form className="ticker-form" onSubmit={loadTicker} role="search">
+              <label htmlFor="ticker" className="sr-only">Ticker symbol</label>
+              <input
+                id="ticker"
+                className="ticker-input"
+                placeholder="Ticker, like MSFT"
+                value={ticker}
+                onChange={(e) => setTicker(e.target.value.toUpperCase())}
+                autoComplete="off"
+                spellCheck={false}
+                maxLength={10}
+              />
+              <button className="btn small" type="submit" disabled={loading || !ticker.trim()}>
+                {loading ? "Loading" : "Load from SEC"}
+              </button>
+            </form>
+            <select aria-label="Current company" value={preset} onChange={(e) => choose(e.target.value)}>
+              <option value="apple">Apple (AAPL), preloaded</option>
               <option value="blank">Start from scratch</option>
+              {preset === "loaded" && <option value="loaded">{name} ({inputs.company.ticker}), {inputs.company.baseYearLabel} 10-K</option>}
               {preset === "shared" && <option value="shared">{name} (shared model)</option>}
             </select>
-          </label>
+          </div>
           <div className="share">
             {copied && <span className="share-note" role="status">Link copied</span>}
             <button className="btn ghost small" onClick={share} disabled={!ready}>
@@ -154,7 +207,28 @@ export default function Valora() {
         </nav>
       </header>
 
-      {showIntro && stage === "inputs" && (
+      {notice && (
+        <div className="intro">
+          <div className={`intro-inner notice-${notice.tone}`} role={notice.tone === "error" ? "alert" : "status"}>
+            <div>
+              <p>{notice.text}</p>
+              {notice.warnings && notice.warnings.length > 0 && (
+                <ul className="notice-list">
+                  {notice.warnings.map((w) => <li key={w}>{w}</li>)}
+                </ul>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 16, alignItems: "center", flex: "none" }}>
+              {notice.tone === "info" && !(inputs.sharePrice > 0) && (
+                <button className="btn small" onClick={() => { setStage("inputs"); setStep(4); }}>Add share price</button>
+              )}
+              <button className="linkbtn" onClick={() => setNotice(null)}>Hide</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showIntro && !notice && stage === "inputs" && (
         <div className="intro">
           <div className="intro-inner">
             <p>

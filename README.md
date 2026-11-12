@@ -11,7 +11,15 @@ Valora walks you through a DCF one assumption at a time, compiles the full model
 - **Results.** Value bridge, free cash flow chart, WACC and terminal value sensitivity tables, and a reverse DCF that shows what the market price implies.
 - **Share links.** The whole model is encoded in the link, so there's no database and nothing stored on a server.
 
-Apple is preloaded from its fiscal 2026 results (year ended September 26, 2026).
+Apple is preloaded from its fiscal 2026 results (year ended September 26, 2026). Any other US-listed company can be loaded by ticker: Valora pulls three years of 10-K data from SEC EDGAR and links every number to the filing.
+
+## Setup
+
+Ticker search calls the SEC's free XBRL API. The SEC requires every automated tool to identify itself with a contact email, so set this environment variable (in Vercel: Settings > Environment Variables):
+
+```
+SEC_CONTACT_EMAIL=you@example.com
+```
 
 ## Run it locally
 
@@ -36,7 +44,6 @@ python3 verification/extract_results.py
 
 ## Roadmap
 
-- Pull financials for any ticker from SEC EDGAR
 - AI-suggested assumptions with reasoning from 10-K and 10-Q text
 - LBO builder
 

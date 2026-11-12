@@ -423,8 +423,25 @@ function BalanceSheet({ ctx }: { ctx: Ctx }) {
         <Field
           label="Share price"
           help={i.company.priceDate ? `As of ${i.company.priceDate}` : "Today's price"}
-          input={<NumInput kind="price" label="Share price" value={i.sharePrice} onChange={(n) => ctx.update({ sharePrice: n, company: { ...i.company, priceDate: "" } }, ["sharePrice"])} />}
-          notes={<Notes ctx={ctx} id="sharePrice" />}
+          input={<NumInput kind="price" label="Share price" value={i.sharePrice} onChange={(n) =>
+                ctx.update(
+                  { sharePrice: n, company: { ...i.company, priceDate: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) } },
+                  ["sharePrice"],
+                )
+              } />}
+          notes={
+            <Notes
+              ctx={ctx}
+              id="sharePrice"
+              extra={
+                i.company.ticker ? (
+                  <a href={`https://finance.yahoo.com/quote/${encodeURIComponent(i.company.ticker)}`} target="_blank" rel="noreferrer">
+                    Look up {i.company.ticker}&rsquo;s price
+                  </a>
+                ) : undefined
+              }
+            />
+          }
         />
         <Field
           label="Shares outstanding"

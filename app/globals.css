@@ -61,7 +61,20 @@ h1, h2, h3, p { margin: 0; }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); }
 .brand-name { font-size: var(--step-2); font-weight: 800; letter-spacing: -0.03em; }
 .brand-sub { font-size: var(--step--1); color: var(--ink-soft); margin-left: 4px; }
-.company-pick { display: flex; align-items: center; gap: 10px; justify-self: start; font-size: var(--step--1); color: var(--ink-soft); }
+.company-pick { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-self: start; font-size: var(--step--1); color: var(--ink-soft); }
+.ticker-form { display: flex; gap: 6px; }
+.ticker-input {
+  background: var(--sheet); border: 1.5px solid var(--ink); border-radius: 3px; height: 32px; width: 150px;
+  padding: 0 10px; font-family: var(--mono); font-size: var(--step--1); text-transform: uppercase;
+}
+.ticker-input::placeholder { text-transform: none; font-family: var(--sans); color: var(--ink-faint); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.notice-error { border-left-color: var(--red); }
+.notice-error p { color: var(--ink); }
+.notice-list { margin: 8px 0 0; padding-left: 18px; color: var(--amber); font-size: var(--step--1); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:disabled:hover { background: var(--ink); border-color: var(--ink); }
+.btn.ghost:disabled:hover { background: transparent; }
 .company-pick select {
   background: var(--sheet); border: 1px solid var(--rule-strong); border-radius: 3px;
   padding: 6px 10px; color: var(--ink); font-weight: 600;
@@ -298,6 +311,7 @@ h1, h2, h3, p { margin: 0; }
   .top-inner { grid-template-columns: 1fr auto; }
   .company-pick { grid-column: 1 / -1; grid-row: 2; padding-bottom: 4px; }
   .brand-sub { display: none; }
+  .ticker-input { width: 130px; }
   .bench { grid-template-columns: 1fr; padding: 16px; gap: 20px; }
   .rail { position: static; }
   .rail ol { display: flex; overflow-x: auto; border-left: none; border-bottom: 2px solid var(--rule); }
