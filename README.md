@@ -1,6 +1,6 @@
 # Valora
 
-A guided discounted cash flow (DCF) builder for students learning valuation.
+A guided discounted cash flow (DCF) builder for students and new grads learning valuation to break into the world of M&A and valuation.
 
 Valora walks you through a DCF one assumption at a time, compiles the full model so you can see every formula, and then tests it:
 
