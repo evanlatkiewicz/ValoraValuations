@@ -126,7 +126,7 @@ const LEVEL_WORD: Record<Level, string> = {
 };
 
 export function Dot({ level }: { level: Level | null }) {
-  if (!level) return <span className="dot none" aria-hidden />;
+  if (!level) return <span className="dot none" role="img" aria-label="Not filled in yet" title="Not filled in yet" />;
   return <span className={`dot ${level}`} role="img" aria-label={LEVEL_WORD[level]} title={LEVEL_WORD[level]} />;
 }
 
@@ -160,7 +160,9 @@ export function Field({
   dot,
   input,
   notes,
+  wide,
 }: {
+  wide?: boolean;
   label: string;
   help?: ReactNode;
   dot?: Level | null;
@@ -168,7 +170,7 @@ export function Field({
   notes?: ReactNode;
 }) {
   return (
-    <div className="field">
+    <div className={wide ? "field wide" : "field"}>
       <div>
         <div className="field-label">
           {dot !== undefined && <Dot level={dot} />}

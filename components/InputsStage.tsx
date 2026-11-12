@@ -30,11 +30,22 @@ export const STEP_FIELDS: string[][] = [
   ["terminalGrowth", "exitMultiple"],
 ];
 
+/** Whether a step has everything it needs, for steps that have no sanity checks. */
+function stepComplete(i: DcfInputs, step: number): boolean {
+  if (step === 0) {
+    const base = i.history[i.history.length - 1];
+    return i.history.every((y) => y.revenue > 0) && base.ebit !== 0 && base.da > 0;
+  }
+  if (step === 4) return i.sharePrice > 0 && i.sharesOutstanding > 0;
+  return false;
+}
+
 export function InputsStage({ ctx, step, setStep }: { ctx: Ctx; step: number; setStep: (n: number) => void }) {
   const levelForStep = (i: number) => {
-    if (!ctx.ready) return null;
-    const ls = STEP_FIELDS[i].map((f) => worstLevelFor(ctx.checks, f)).filter(Boolean);
-    if (ls.length === 0) return null;
+    // Steps with sanity checks show the worst check. Steps without any
+    // (the business, the balance sheet) go green once they're filled in.
+    const ls = ctx.ready ? STEP_FIELDS[i].map((f) => worstLevelFor(ctx.checks, f)).filter(Boolean) : [];
+    if (ls.length === 0) return stepComplete(ctx.inputs, i) && (ctx.ready || i === 0 || i === 4) ? "good" : null;
     return ls.includes("bad") ? "bad" : ls.includes("warn") ? "warn" : "good";
   };
   const goStep = (n: number) => {
@@ -542,6 +553,7 @@ function Terminal({ ctx }: { ctx: Ctx }) {
       </p>
       <div className="body">
         <Field
+          wide
           label="Method"
           input={
             <div className="seg" role="group" aria-label="Terminal value method">
