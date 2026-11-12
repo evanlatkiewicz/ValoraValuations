@@ -396,3 +396,5 @@ h1, h2, h3, p { margin: 0; }
 .doc-nav > ol > li + li .group { padding-top: 18px; }
 
 .verdict .warn-say { color: var(--red); border-left: 3px solid var(--red); padding-left: 12px; }
+
+.block-unit { font-weight: 400; font-size: var(--step--1); color: var(--ink-faint); margin-left: 6px; }

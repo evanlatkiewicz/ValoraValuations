@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Ctx } from "./Valora";
 import { LiveRead } from "./LiveRead";
-import { isNeg, money, mult, pct, price } from "@/lib/format";
+import { isNeg, money, moneyB, mult, pct, price } from "@/lib/format";
 import type { ProjectedYear } from "@/lib/types";
 
 type Fmt = "money" | "pct" | "factor" | "period";
@@ -148,7 +148,7 @@ export function ModelStage({ ctx }: { ctx: Ctx }) {
           <table className="sheet">
             <thead>
               <tr>
-                <th>{inp.company.name || "Company"}</th>
+                <th>{inp.company.name || "Company"}<span className="kind">$ in millions</span></th>
                 {h.map((y) => <th key={y.label} className="actual">{y.label}<span className="kind">actual</span></th>)}
                 {ys.map((y) => <th key={y.label}>{y.label}<span className="kind">projected</span></th>)}
               </tr>
@@ -207,21 +207,21 @@ export function ModelStage({ ctx }: { ctx: Ctx }) {
             </div>
           </div>
           <div>
-            <div className="block-title">Enterprise value</div>
+            <div className="block-title">Enterprise value <span className="block-unit">$ in millions</span></div>
             <div className="ledger">
               <div className="ledger-row"><span>PV of five years of FCF</span><span className="num">{money(r.sumPvUfcf)}</span></div>
               <div className="ledger-row"><span>PV of terminal value</span><span className="num">{money(r.terminal.pv)}</span></div>
-              <div className="ledger-row total"><span>Enterprise value</span><span className="num">{money(r.enterpriseValue)}</span></div>
+              <div className="ledger-row total"><span>Enterprise value<div className="formula">{moneyB(r.enterpriseValue)}</div></span><span className="num">{money(r.enterpriseValue)}</span></div>
               <div className="ledger-row"><span>{inp.terminalMethod === "gordon" ? "Implied exit multiple" : "Implied perpetual growth"}</span><span className="num">{inp.terminalMethod === "gordon" ? mult(r.terminal.impliedExitMultiple) : pct(r.terminal.impliedGrowth)}</span></div>
             </div>
           </div>
           <div>
-            <div className="block-title">Value per share</div>
+            <div className="block-title">Value per share <span className="block-unit">$ in millions</span></div>
             <div className="ledger">
               <div className="ledger-row"><span>Enterprise value</span><span className="num">{money(r.enterpriseValue)}</span></div>
               <div className="ledger-row"><span>Less debt</span><span className="num neg">({money(inp.debt)})</span></div>
               <div className="ledger-row"><span>Plus cash and investments</span><span className="num">{money(inp.cash)}</span></div>
-              <div className="ledger-row"><span>Equity value</span><span className="num">{money(r.equityValue)}</span></div>
+              <div className="ledger-row"><span>Equity value<div className="formula">{moneyB(r.equityValue)}</div></span><span className="num">{money(r.equityValue)}</span></div>
               <div className="ledger-row"><span>Divided by shares (millions)</span><span className="num">{inp.sharesOutstanding.toLocaleString("en-US", { maximumFractionDigits: 1 })}</span></div>
               <div className="ledger-row total"><span>Implied value per share</span><span className="num">{price(r.impliedPrice)}</span></div>
             </div>
