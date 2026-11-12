@@ -264,7 +264,7 @@ export function inputsFromFacts(f: CompanyFacts, ticker: string): LoadResult {
     revenueGrowth: { kind: "assumption", note: `Starts at the recent average of ${(avgGrowth * 100).toFixed(1)}% (capped between -5% and 25%) and fades toward 4%. A starting point, not a forecast.` },
     ebitMargin: { kind: "assumption", note: `Held at the base year margin of ${(baseMargin * 100).toFixed(1)}%.` },
     taxRate: isFinite(effTax) && taxRate === effTax
-      ? filing(`Base year effective rate: income tax ÷ pre-tax income = ${(effTax * 100).toFixed(1)}%`)
+      ? filing(`Base year effective rate: income tax / pre-tax income = ${(effTax * 100).toFixed(1)}%`)
       : { kind: "assumption", note: "The reported rate looked unusual, so this uses the 21% US federal rate." },
     daPct: filing(`Base year D&A of ${Math.round(base.da).toLocaleString("en-US")} is ${(daPct * 100).toFixed(1)}% of revenue`),
     capexPct: { kind: "assumption", note: `Average capex over the last ${history.length} years was ${(capexAvg * 100).toFixed(1)}% of revenue.` },

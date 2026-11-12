@@ -529,7 +529,7 @@ function DiscountRate({ ctx }: { ctx: Ctx }) {
       <div className="ledger">
         <div className="ledger-row"><span>Cost of equity<div className="formula">{pct(i.riskFreeRate, 2)} + {i.beta.toFixed(2)} × {pct(i.equityRiskPremium, 2)}</div></span><span className="num">{pct(w.costOfEquity, 2)}</span></div>
         <div className="ledger-row"><span>After-tax cost of debt<div className="formula">{pct(i.preTaxCostOfDebt, 2)} × (1 − {pct(i.taxRate)})</div></span><span className="num">{pct(w.afterTaxCostOfDebt, 2)}</span></div>
-        <div className="ledger-row"><span>Equity weight<div className="formula">market cap ÷ (market cap + debt)</div></span><span className="num">{pct(w.equityWeight)}</span></div>
+        <div className="ledger-row"><span>Equity weight<div className="formula">market cap / (market cap + debt)</div></span><span className="num">{pct(w.equityWeight)}</span></div>
         <div className="ledger-row"><span>Debt weight</span><span className="num">{pct(w.debtWeight)}</span></div>
         <div className="ledger-row total"><span>WACC</span><span className="num">{pct(w.wacc, 2)}</span></div>
       </div>
@@ -563,7 +563,7 @@ function Terminal({ ctx }: { ctx: Ctx }) {
           }
           notes={
             gordon ? (
-              <span>Assumes year 5 cash flow grows at a steady rate forever. Value = FCF × (1 + g) ÷ (WACC − g).</span>
+              <span>Assumes year 5 cash flow grows at a steady rate forever. Value = FCF × (1 + g) / (WACC − g).</span>
             ) : (
               <span>Assumes the business is sold at the end of year 5 for a multiple of EBITDA, like comparable companies trade at.</span>
             )
@@ -580,7 +580,7 @@ function Terminal({ ctx }: { ctx: Ctx }) {
         ) : (
           <Field
             label="Exit multiple"
-            help="Enterprise value ÷ EBITDA."
+            help="Enterprise value / EBITDA."
             dot={lvl("exitMultiple")}
             input={<NumInput kind="mult" label="Exit multiple" level={lvl("exitMultiple")} value={i.exitMultiple} onChange={(n) => set("exitMultiple", n)} />}
             notes={<Notes ctx={ctx} id="exitMultiple" extra={<span className="ref">Implies {pct(r.terminal.impliedGrowth)} growth forever</span>} />}

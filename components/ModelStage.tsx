@@ -110,7 +110,7 @@ export function ModelStage({ ctx }: { ctx: Ctx }) {
     },
     {
       key: "df", label: "Discount factor", style: "sub", fmt: "factor", proj: (y) => y.discountFactor,
-      explain: (i) => ({ words: "What a dollar received in that year is worth today at your WACC.", math: `1 ÷ (1 + ${pct(w, 2)})^${ys[i].period.toFixed(1)} = ${ys[i].discountFactor.toFixed(4)}` }),
+      explain: (i) => ({ words: "What a dollar received in that year is worth today at your WACC.", math: `1 / (1 + ${pct(w, 2)})^${ys[i].period.toFixed(1)} = ${ys[i].discountFactor.toFixed(4)}` }),
     },
     {
       key: "pv", label: "Present value of FCF", style: "total", fmt: "money", proj: (y) => y.pvUfcf,
@@ -121,7 +121,7 @@ export function ModelStage({ ctx }: { ctx: Ctx }) {
       key: "tv", label: "Terminal value", fmt: "money", onlyLast: true, proj: () => r.terminal.value,
       explain: () =>
         inp.terminalMethod === "gordon"
-          ? { words: "Value of every year after year 5, assuming cash flow grows at your terminal rate forever.", math: `${money(ys[4].ufcf)} × (1 + ${pct(inp.terminalGrowth)}) ÷ (${pct(w, 2)} − ${pct(inp.terminalGrowth)}) = ${money(r.terminal.value)}` }
+          ? { words: "Value of every year after year 5, assuming cash flow grows at your terminal rate forever.", math: `${money(ys[4].ufcf)} × (1 + ${pct(inp.terminalGrowth)}) / (${pct(w, 2)} − ${pct(inp.terminalGrowth)}) = ${money(r.terminal.value)}` }
           : { words: "Value of the business at the end of year 5, priced at your exit multiple of EBITDA.", math: `${money(ys[4].ebitda)} × ${mult(inp.exitMultiple)} = ${money(r.terminal.value)}` },
     },
     {
@@ -222,7 +222,7 @@ export function ModelStage({ ctx }: { ctx: Ctx }) {
               <div className="ledger-row"><span>Less debt</span><span className="num neg">({money(inp.debt)})</span></div>
               <div className="ledger-row"><span>Plus cash and investments</span><span className="num">{money(inp.cash)}</span></div>
               <div className="ledger-row"><span>Equity value</span><span className="num">{money(r.equityValue)}</span></div>
-              <div className="ledger-row"><span>÷ shares (millions)</span><span className="num">{inp.sharesOutstanding.toLocaleString("en-US", { maximumFractionDigits: 1 })}</span></div>
+              <div className="ledger-row"><span>Divided by shares (millions)</span><span className="num">{inp.sharesOutstanding.toLocaleString("en-US", { maximumFractionDigits: 1 })}</span></div>
               <div className="ledger-row total"><span>Implied value per share</span><span className="num">{price(r.impliedPrice)}</span></div>
             </div>
           </div>
