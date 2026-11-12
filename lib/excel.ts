@@ -4,6 +4,7 @@
 
 import type ExcelJSType from "exceljs";
 import { baseYear, projectionLabels, runDcf, sensitivity } from "./dcf";
+import { caseInputs, caseValues, getScenarios, SCENARIO_IDS, SCENARIO_LABEL, type ScenarioId } from "./scenarios";
 import type { DcfInputs } from "./types";
 
 type ExcelJS = typeof ExcelJSType;
@@ -20,7 +21,13 @@ const PRICE = '$#,##0.00;($#,##0.00)';
 /** Cell addresses of the key outputs, so tests can read them back. */
 export const OUTPUT_CELLS = { wacc: "C42", ev: "C52", equity: "C55", price: "C57" };
 
-export function buildWorkbook(ExcelJS: ExcelJS, inputs: DcfInputs) {
+export function buildWorkbook(ExcelJS: ExcelJS, inputs: DcfInputs, active: ScenarioId = "base") {
+  const sc = getScenarios(inputs);
+  const caseVals: Record<ScenarioId, ReturnType<typeof caseValues>> = {
+    bear: caseValues(inputs, "bear"),
+    base: caseValues(inputs, "base"),
+    bull: caseValues(inputs, "bull"),
+  };
   const wb = new ExcelJS.Workbook();
   wb.creator = "Valora";
   wb.calcProperties.fullCalcOnLoad = true;
@@ -108,6 +115,41 @@ export function buildWorkbook(ExcelJS: ExcelJS, inputs: DcfInputs) {
     note(r, src(srcIds[key]));
   });
 
+  // ---- Bull, base and bear inputs (rows 61-74). Row 62 picks the case. ----
+  const SW = 62;
+  const CR = { g: [64, 65, 66], m: [67, 68, 69], capex: 72, tg: 73, mult: 74 };
+  section(61, "Bull, base and bear cases");
+  label(SW, "Case shown on this sheet (1 = bear, 2 = base, 3 = bull)", true);
+  input(`C${SW}`, SCENARIO_IDS.indexOf(active) + 1, "0");
+  ws.getCell(`C${SW}`).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3E3C4" } };
+  note(SW, "Change this to 1, 2 or 3 and the whole model recalculates for that case.");
+  SCENARIO_IDS.forEach((id, k) => {
+    label(CR.g[k], `Revenue growth, ${SCENARIO_LABEL[id].toLowerCase()}`);
+    label(CR.m[k], `Operating margin, ${SCENARIO_LABEL[id].toLowerCase()}`);
+    for (let i = 0; i < 5; i++) {
+      const c = col(nh + i);
+      input(`${c}${CR.g[k]}`, caseVals[id].revenueGrowth[i], PCT);
+      input(`${c}${CR.m[k]}`, caseVals[id].ebitMargin[i], PCT);
+    }
+    const hc = ws.getCell(`${col(k)}71`);
+    hc.value = SCENARIO_LABEL[id];
+    hc.font = { bold: true, color: INK };
+    hc.alignment = { horizontal: "right" };
+    input(`${col(k)}${CR.capex}`, caseVals[id].capexPct, PCT);
+    input(`${col(k)}${CR.tg}`, caseVals[id].terminalGrowth, PCT);
+    input(`${col(k)}${CR.mult}`, caseVals[id].exitMultiple, '0.0"x"');
+  });
+  label(CR.capex, "Capex, % of revenue");
+  label(CR.tg, "Terminal growth rate");
+  label(CR.mult, "Exit multiple (EV / EBITDA)");
+  const pickRow = (r: number) => `CHOOSE($C$${SW},$C$${r},$D$${r},$E$${r})`;
+  formula(A.capex.replace(/\$/g, ""), pickRow(CR.capex), PCT);
+  formula(A.g.replace(/\$/g, ""), pickRow(CR.tg), PCT);
+  formula(A.mult.replace(/\$/g, ""), pickRow(CR.mult), '0.0"x"');
+  note(Number(A.capex.split("$").pop()), "Picked from the case table below.");
+  note(Number(A.g.split("$").pop()), "Picked from the case table below.");
+  note(Number(A.mult.split("$").pop()), "Picked from the case table below.");
+
   // ---- Projections (rows 23-38) ----
   const H = 23;
   section(H, "Free cash flow");
@@ -152,9 +194,9 @@ export function buildWorkbook(ExcelJS: ExcelJS, inputs: DcfInputs) {
   // Projections (formulas, with growth and margin as blue inputs)
   projCols.forEach((c, i) => {
     const prev = i === 0 ? histCols[nh - 1] : projCols[i - 1];
-    input(`${c}${R.growth}`, inputs.revenueGrowth[i], PCT);
+    formula(`${c}${R.growth}`, `CHOOSE($C$${SW},${c}${CR.g[0]},${c}${CR.g[1]},${c}${CR.g[2]})`, PCT);
     formula(`${c}${R.rev}`, `${prev}${R.rev}*(1+${c}${R.growth})`, MONEY);
-    input(`${c}${R.margin}`, inputs.ebitMargin[i], PCT);
+    formula(`${c}${R.margin}`, `CHOOSE($C$${SW},${c}${CR.m[0]},${c}${CR.m[1]},${c}${CR.m[2]})`, PCT);
     formula(`${c}${R.ebit}`, `${c}${R.rev}*${c}${R.margin}`, MONEY);
     formula(`${c}${R.taxes}`, `-${c}${R.ebit}*${A.tax}`, MONEY);
     formula(`${c}${R.nopat}`, `${c}${R.ebit}+${c}${R.taxes}`, MONEY, true);
@@ -218,10 +260,10 @@ export function buildWorkbook(ExcelJS: ExcelJS, inputs: DcfInputs) {
   sw.getColumn(2).width = 16;
   for (let i = 3; i <= 8; i++) sw.getColumn(i).width = 13;
   const gordon = inputs.terminalMethod === "gordon";
-  const s = sensitivity(inputs, [-0.01, -0.005, 0, 0.005, 0.01], gordon ? [-0.01, -0.005, 0, 0.005, 0.01] : [-4, -2, 0, 2, 4]);
+  const s = sensitivity(caseInputs(inputs, active), [-0.01, -0.005, 0, 0.005, 0.01], gordon ? [-0.01, -0.005, 0, 0.005, 0.01] : [-4, -2, 0, 2, 4]);
   sw.getCell("B1").value = "Implied value per share";
   sw.getCell("B1").font = { bold: true, size: 13 };
-  sw.getCell("B2").value = `Rows: WACC. Columns: ${gordon ? "terminal growth" : "exit multiple"}. These are values from Valora at export time; they won't update if you change the DCF sheet.`;
+  sw.getCell("B2").value = `${SCENARIO_LABEL[active]} case. Rows: WACC. Columns: ${gordon ? "terminal growth" : "exit multiple"}. These are values from Valora at export time; they won't update if you change the DCF sheet.`;
   sw.getCell("B2").font = { italic: true, color: GRAY };
   s.terminals.forEach((t, j) => {
     const c = sw.getCell(4, 3 + j);
@@ -241,6 +283,47 @@ export function buildWorkbook(ExcelJS: ExcelJS, inputs: DcfInputs) {
       if (i === 2 && j === 2) cell.font = { bold: true };
     });
   });
+
+  // ---- Scenarios summary. Probabilities are live; case values are from Valora. ----
+  const ss = wb.addWorksheet("Scenarios", { views: [{ showGridLines: false }] });
+  ss.getColumn(1).width = 2;
+  ss.getColumn(2).width = 30;
+  for (let i = 3; i <= 5; i++) ss.getColumn(i).width = 16;
+  ss.getCell("B1").value = "Bull, base and bear";
+  ss.getCell("B1").font = { bold: true, size: 13 };
+  ss.getCell("B2").value = "Values per share come from Valora at export time. Change the blue probabilities and the weighted value updates. To see a case in full, set the case cell on the DCF sheet.";
+  ss.getCell("B2").font = { italic: true, color: GRAY };
+  ["Case", "Value per share", "Probability"].forEach((t, k) => {
+    const c = ss.getCell(4, 2 + k);
+    c.value = t;
+    c.font = { bold: true };
+    c.border = { bottom: { style: "thin", color: INK } };
+  });
+  SCENARIO_IDS.forEach((id, k) => {
+    const r = 5 + k;
+    ss.getCell(r, 2).value = SCENARIO_LABEL[id];
+    const v = ss.getCell(r, 3);
+    v.value = Number.isFinite(runDcf(caseInputs(inputs, id)).impliedPrice) ? runDcf(caseInputs(inputs, id)).impliedPrice : "n/a";
+    v.numFmt = PRICE;
+    const w = ss.getCell(r, 4);
+    w.value = sc.weights[id];
+    w.numFmt = "0%";
+    w.font = { color: BLUE };
+  });
+  ss.getCell("B9").value = "Probability-weighted value";
+  ss.getCell("B9").font = { bold: true };
+  const wv = ss.getCell("C9");
+  wv.value = { formula: "SUMPRODUCT(C5:C7,D5:D7)/SUM(D5:D7)" };
+  wv.numFmt = PRICE;
+  wv.font = { bold: true };
+  wv.border = { top: { style: "thin", color: INK }, bottom: { style: "double", color: INK } };
+  ss.getCell("B10").value = "Share price";
+  const sp = ss.getCell("C10");
+  sp.value = inputs.sharePrice;
+  sp.numFmt = PRICE;
+  ss.getCell("B11").value = "Upside to weighted value";
+  ss.getCell("C11").value = { formula: 'IF(C10=0,"",C9/C10-1)' };
+  ss.getCell("C11").numFmt = PCT;
 
   return wb;
 }

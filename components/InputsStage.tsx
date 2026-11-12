@@ -8,6 +8,7 @@ import { worstLevelFor } from "@/lib/checks";
 import { baseYear, projectionLabels } from "@/lib/dcf";
 import { money, moneyB, mult, pct } from "@/lib/format";
 import { fmtDate } from "@/lib/market";
+import { isCaseField, SCENARIO_LABEL } from "@/lib/scenarios";
 import type { DcfInputs, HistoricalYear } from "@/lib/types";
 
 const STEPS = [
@@ -80,7 +81,7 @@ export function InputsStage({ ctx, step, setStep }: { ctx: Ctx; step: number; se
         </ol>
       </nav>
 
-      <section className="step" aria-labelledby="step-title">
+      <section className="step" aria-labelledby="step-title" key={ctx.scenario}>
         {step === 0 && <Business ctx={ctx} />}
         {step === 1 && <Revenue ctx={ctx} />}
         {step === 2 && <Margins ctx={ctx} />}
@@ -121,6 +122,28 @@ function useField(ctx: Ctx) {
 
 function Notes({ ctx, id, extra }: { ctx: Ctx; id: string; extra?: React.ReactNode }) {
   const s = ctx.inputs.sources[id];
+  if (ctx.scenario !== "base") {
+    if (isCaseField(id)) {
+      return (
+        <>
+          {extra}
+          <span>
+            <span className={`case-tag case-${ctx.scenario}`}>{SCENARIO_LABEL[ctx.scenario]} case</span>{" "}
+            {ctx.raw.scenarios
+              ? "This value applies only to this case."
+              : `Starts ${ctx.scenario === "bull" ? "above" : "below"} the base case. Change it to set your own ${SCENARIO_LABEL[ctx.scenario].toLowerCase()} case.`}
+          </span>
+        </>
+      );
+    }
+    return (
+      <>
+        {extra}
+        <span><span className="case-tag case-shared">Shared</span> Same in all three cases.</span>
+        <SourceTag source={s} />
+      </>
+    );
+  }
   return (
     <>
       {extra}

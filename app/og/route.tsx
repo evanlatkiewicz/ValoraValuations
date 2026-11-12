@@ -162,6 +162,20 @@ export async function GET(req: Request) {
             <div style={{ fontSize: 26, color: SOFT }}>Implied value per share</div>
             <div style={{ fontSize: 124, fontFamily: "Plex Mono", letterSpacing: -6, lineHeight: 1.02, color: card.warn ? RED : INK }}>{money(card.value)}</div>
             {card.warn && <div style={{ fontSize: 23, color: RED, marginTop: 4 }}>Cash flow is negative in year 5, so this isn&apos;t meaningful yet.</div>}
+            {!card.warn && card.range && (
+              <div style={{ display: "flex", gap: 12, marginTop: 14 }}>
+                {[
+                  { k: "Bear", v: card.range.bear, c: RED },
+                  { k: "Weighted", v: card.range.weighted, c: INK },
+                  { k: "Bull", v: card.range.bull, c: GREEN },
+                ].map((x) => (
+                  <div key={x.k} style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "6px 14px", borderRadius: 999, border: `2px solid ${x.c}`, background: SHEET }}>
+                    <div style={{ fontSize: 19, color: x.c, fontWeight: 800 }}>{x.k}</div>
+                    <div style={{ fontSize: 22, fontFamily: "Plex Mono" }}>{money(x.v)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 20, padding: "26px 32px", background: SHEET, border: `2.5px solid ${INK}`, borderRadius: 14, minWidth: 330 }}>
             <div style={{ display: "flex", flexDirection: "column" }}>

@@ -1,6 +1,7 @@
 // Turns a model into the short summary that the link preview card shows.
 import { runChecks, starRating } from "./checks";
 import { runDcf } from "./dcf";
+import { analyze } from "./scenarios";
 import type { DcfInputs } from "./types";
 
 export interface CardSummary {
@@ -12,6 +13,7 @@ export interface CardSummary {
   stars: number;
   warn: boolean; // the model burns cash forever, so the value isn't meaningful
   logo: string | null; // logo domain, like "apple.com"
+  range: { bear: number; bull: number; weighted: number } | null;
 }
 
 const LOGO_PREFIX = "https://api.twelvedata.com/logo/";
@@ -23,7 +25,10 @@ export function summarize(inputs: DcfInputs): CardSummary | null {
   const r = runDcf(inputs);
   if (!Number.isFinite(r.impliedPrice)) return null;
   const checks = runChecks(inputs, r);
+  const a = analyze(inputs);
+  const range = a.valid ? { bear: a.cases.bear.value, bull: a.cases.bull.value, weighted: a.expected } : null;
   return {
+    range,
     name: (inputs.company.name || "Untitled company").slice(0, 48),
     ticker: inputs.company.ticker.slice(0, 10),
     year: inputs.company.baseYearLabel.slice(0, 10),
@@ -47,6 +52,7 @@ export function cardQuery(s: CardSummary): string {
   });
   if (s.warn) q.set("w", "1");
   if (s.logo) q.set("l", s.logo);
+  if (s.range) q.set("r", [s.range.bear, s.range.bull, s.range.weighted].map((x) => x.toFixed(2)).join("_"));
   return q.toString();
 }
 
@@ -64,5 +70,9 @@ export function readCard(q: URLSearchParams): CardSummary | null {
     stars: Number.isFinite(stars) ? Math.min(5, Math.max(0, stars)) : 0,
     warn: q.get("w") === "1",
     logo: logoUrlFor(q.get("l")) ? q.get("l") : null,
+    range: (() => {
+      const p = (q.get("r") ?? "").split("_").map(Number);
+      return p.length === 3 && p.every(Number.isFinite) ? { bear: p[0], bull: p[1], weighted: p[2] } : null;
+    })(),
   };
 }

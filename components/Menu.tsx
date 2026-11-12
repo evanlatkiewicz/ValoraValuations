@@ -7,12 +7,13 @@ import { shareUrl } from "@/lib/share";
 import { publicOrigin } from "@/lib/site";
 import { loadSession } from "@/lib/session";
 import type { DcfInputs } from "@/lib/types";
+import type { ScenarioId } from "@/lib/scenarios";
 
 /**
  * The site menu. On the builder it receives the live model; on the Learn and
  * About pages it falls back to the model saved for this browser tab.
  */
-export function Menu({ inputs, canExport = true }: { inputs?: DcfInputs; canExport?: boolean }) {
+export function Menu({ inputs, canExport = true, scenario = "base" }: { inputs?: DcfInputs; canExport?: boolean; scenario?: ScenarioId }) {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const wrap = useRef<HTMLDivElement>(null);
@@ -65,7 +66,7 @@ export function Menu({ inputs, canExport = true }: { inputs?: DcfInputs; canExpo
         import("@/lib/excel"),
       ]);
       const m = model();
-      const buf = await buildWorkbook(ExcelJS, m).xlsx.writeBuffer();
+      const buf = await buildWorkbook(ExcelJS, m, scenario).xlsx.writeBuffer();
       const url = URL.createObjectURL(
         new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
       );

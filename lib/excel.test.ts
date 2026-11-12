@@ -7,7 +7,8 @@ describe("Excel export", () => {
   it("writes live formulas and the user's inputs", async () => {
     const wb = buildWorkbook(ExcelJS, { ...APPLE, terminalGrowth: 0.025 });
     const ws = wb.getWorksheet("DCF")!;
-    expect(ws.getCell("C18").value).toBe(0.025); // terminal growth input
+    expect(ws.getCell("D73").value).toBe(0.025); // base case terminal growth input
+    expect((ws.getCell("C18").value as { formula: string }).formula).toContain("CHOOSE"); // picked by the case switch
     expect((ws.getCell(OUTPUT_CELLS.price).value as { formula: string }).formula).toBe("C55/C56");
     expect((ws.getCell(OUTPUT_CELLS.wacc).value as { formula: string }).formula).toContain("C45");
     const buf = await wb.xlsx.writeBuffer();

@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { baseYear, runDcf } from "@/lib/dcf";
 import { runChecks, starRating, type Check } from "@/lib/checks";
 import { APPLE, blankInputs } from "@/lib/companies";
 import { decodeAny, decodeInputs } from "@/lib/share";
 import { loadSession, saveSession } from "@/lib/session";
 import { Menu } from "./Menu";
+import { analyze, caseInputs, getScenarios, isCaseField, SCENARIO_LABEL, type Analysis, type ScenarioId, type Weights } from "@/lib/scenarios";
 import { CompanyBar } from "./CompanyBar";
 import { onPrivateDeployment, PUBLIC_ORIGIN } from "@/lib/site";
 import type { MarketData } from "@/lib/market";
@@ -20,7 +21,13 @@ import { ResultsStage } from "./ResultsStage";
 export type Stage = "inputs" | "model" | "results";
 
 export interface Ctx {
-  inputs: DcfInputs;
+  inputs: DcfInputs; // the case being viewed (base, bull or bear)
+  raw: DcfInputs; // the whole model, including saved cases
+  scenario: ScenarioId;
+  setScenario: (s: ScenarioId) => void;
+  analysis: Analysis | null;
+  setWeights: (w: Weights) => void;
+  resetCases: () => void;
   result: DcfResult;
   checks: Check[];
   stars: number;
@@ -93,14 +100,38 @@ export default function Valora() {
     if (restored) saveSession({ inputs, baseline, preset });
   }, [inputs, baseline, preset, restored]);
 
-  const result = useMemo(() => runDcf(inputs), [inputs]);
-  const missing = useMemo(() => missingFields(inputs), [inputs]);
-  const ready = missing.length === 0;
-  const checks = useMemo(() => (ready ? runChecks(inputs, result) : []), [inputs, result, ready]);
-  const stars = ready ? starRating(checks) : 0;
+  const [scenario, setScenarioState] = useState<ScenarioId>("base");
+  const scenarioRef = useRef<ScenarioId>("base");
+  const setScenario = useCallback((s: ScenarioId) => {
+    scenarioRef.current = s;
+    setScenarioState(s);
+  }, []);
 
-  const update = useCallback((patch: Partial<DcfInputs>, fields: string[]) => {
+  const view = useMemo(() => caseInputs(inputs, scenario), [inputs, scenario]);
+  const result = useMemo(() => runDcf(view), [view]);
+  const missing = useMemo(() => missingFields(view), [view]);
+  const ready = missing.length === 0;
+  const checks = useMemo(() => (ready ? runChecks(view, result) : []), [view, result, ready]);
+  const stars = ready ? starRating(checks) : 0;
+  const analysis = useMemo(() => (ready ? analyze(inputs) : null), [inputs, ready]);
+
+  const update = useCallback((patch: Partial<DcfInputs>, fieldsIn: string[]) => {
     setInputs((prev) => {
+      let fields = fieldsIn;
+      const id = scenarioRef.current;
+      const caseKeys = Object.keys(patch).filter(isCaseField);
+      if (id !== "base" && caseKeys.length) {
+        // Bull and bear edits go to that case only
+        const sc = getScenarios(prev);
+        const vals = { ...sc[id] } as Record<string, unknown>;
+        const rest: Record<string, unknown> = { ...patch };
+        for (const k of caseKeys) {
+          vals[k] = (patch as Record<string, unknown>)[k];
+          delete rest[k];
+        }
+        patch = { ...rest, scenarios: { ...sc, [id]: vals } } as Partial<DcfInputs>;
+        fields = fields.filter((f) => !isCaseField(f));
+      }
       const sources = { ...prev.sources };
       for (const f of fields) {
         const old = prev.sources[f];
@@ -132,6 +163,7 @@ export default function Valora() {
     }
     setStage("inputs");
     setStep(0);
+    setScenario("base");
     setNotice(null);
     history.replaceState(null, "", window.location.pathname);
   };
@@ -184,6 +216,7 @@ export default function Valora() {
       setInputs(loaded);
       setBaseline(loaded);
       setPreset("loaded");
+      setScenario("base");
       setStage("inputs");
       setStep(0);
       setShowIntro(false);
@@ -208,7 +241,19 @@ export default function Valora() {
     setNotice(null);
   };
 
-  const ctx: Ctx = { inputs, result, checks, stars, ready, missing, update, go, market, marketError, applyPrice, applyBeta };
+  const setWeights = (w: Weights) =>
+    setInputs((prev) => ({ ...prev, scenarios: { ...getScenarios(prev), weights: w } }));
+  const resetCases = () =>
+    setInputs((prev) => {
+      const next = { ...prev };
+      delete next.scenarios;
+      return next;
+    });
+
+  const ctx: Ctx = {
+    inputs: view, raw: inputs, scenario, setScenario, analysis, setWeights, resetCases,
+    result, checks, stars, ready, missing, update, go, market, marketError, applyPrice, applyBeta,
+  };
   const name = inputs.company.name || "Untitled company";
 
   return (
@@ -249,7 +294,7 @@ export default function Valora() {
               </button>
             )}
           </div>
-          <Menu inputs={inputs} canExport={ready} />
+          <Menu inputs={inputs} canExport={ready} scenario={scenario} />
         </div>
         <nav className="stages" aria-label="Stages">
           {STAGES.map((s, i) => (
@@ -275,7 +320,23 @@ export default function Valora() {
         </div>
       )}
 
-      <CompanyBar inputs={inputs} logo={market && market.ticker === inputs.company.ticker.toUpperCase() ? market.logo : null} />
+      <CompanyBar
+        inputs={view}
+        logo={market && market.ticker === inputs.company.ticker.toUpperCase() ? market.logo : null}
+        scenario={scenario}
+        setScenario={setScenario}
+      />
+      {scenario !== "base" && (
+        <div className={`case-note case-${scenario}`} role="status">
+          <div className="co-inner">
+            <span>
+              You&rsquo;re viewing the <strong>{SCENARIO_LABEL[scenario]} case</strong>. Growth, margins, capex and terminal value you change here
+              apply only to this case. Everything else is shared by all three cases.
+            </span>
+            <button className="linkbtn" onClick={() => setScenario("base")}>Back to Base</button>
+          </div>
+        </div>
+      )}
 
       {notice && (
         <div className="intro">

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { DcfInputs } from "@/lib/types";
 import { price } from "@/lib/format";
+import { SCENARIO_IDS, SCENARIO_LABEL, type ScenarioId } from "@/lib/scenarios";
 
 /** Company logo, or the first letter of its name when there's no logo. */
 export function CompanyLogo({ name, logo, size = 52 }: { name: string; logo?: string | null; size?: number }) {
@@ -21,7 +22,17 @@ export function CompanyLogo({ name, logo, size = 52 }: { name: string; logo?: st
 }
 
 /** The band under the header that says which company you're looking at. */
-export function CompanyBar({ inputs, logo }: { inputs: DcfInputs; logo?: string | null }) {
+export function CompanyBar({
+  inputs,
+  logo,
+  scenario,
+  setScenario,
+}: {
+  inputs: DcfInputs;
+  logo?: string | null;
+  scenario: ScenarioId;
+  setScenario: (s: ScenarioId) => void;
+}) {
   const c = inputs.company;
   if (!c.name.trim()) return null;
   const filing = inputs.sources.history?.url;
@@ -35,6 +46,13 @@ export function CompanyBar({ inputs, logo }: { inputs: DcfInputs; logo?: string 
             {c.ticker && <span className="co-ticker">{c.ticker}</span>}
             <span>Base year {c.baseYearLabel}{filing ? ", " : ""}{filing && <a href={filing} target="_blank" rel="noreferrer">10-K filing</a>}</span>
           </div>
+        </div>
+        <div className="case-switch" role="group" aria-label="Scenario">
+          {SCENARIO_IDS.map((id) => (
+            <button key={id} className={`case-btn case-${id}`} aria-pressed={scenario === id} onClick={() => setScenario(id)}>
+              {SCENARIO_LABEL[id]}
+            </button>
+          ))}
         </div>
         {inputs.sharePrice > 0 && (
           <div className="co-price">

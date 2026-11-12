@@ -57,6 +57,9 @@ export interface DcfInputs {
   midYear: boolean;
 
   sources: Record<string, Source>;
+
+  // Bull and bear cases. Missing means "derive them from the base case".
+  scenarios?: import("./scenarios").Scenarios;
 }
 
 export interface ProjectedYear {
