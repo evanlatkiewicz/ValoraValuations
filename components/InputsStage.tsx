@@ -30,22 +30,32 @@ export const STEP_FIELDS: string[][] = [
   ["terminalGrowth", "exitMultiple"],
 ];
 
-/** Whether a step has everything it needs, for steps that have no sanity checks. */
+/** Whether a step's own inputs are filled in. */
 function stepComplete(i: DcfInputs, step: number): boolean {
-  if (step === 0) {
-    const base = i.history[i.history.length - 1];
-    return i.history.every((y) => y.revenue > 0) && base.ebit !== 0 && base.da > 0;
+  const ok = (...xs: number[]) => xs.every((x) => Number.isFinite(x));
+  switch (step) {
+    case 0: {
+      const base = i.history[i.history.length - 1];
+      return i.history.every((y) => y.revenue > 0) && base.ebit !== 0 && base.da > 0;
+    }
+    case 1: return i.revenueGrowth.length === 5 && ok(...i.revenueGrowth);
+    case 2: return i.ebitMargin.length === 5 && ok(...i.ebitMargin);
+    case 3: return ok(i.taxRate, i.daPct, i.capexPct, i.nwcPct, i.baseNwc);
+    case 4: return i.sharePrice > 0 && i.sharesOutstanding > 0;
+    case 5: return ok(i.riskFreeRate, i.beta, i.equityRiskPremium, i.preTaxCostOfDebt);
+    case 6: return i.terminalMethod === "gordon" ? ok(i.terminalGrowth) : ok(i.exitMultiple);
+    default: return false;
   }
-  if (step === 4) return i.sharePrice > 0 && i.sharesOutstanding > 0;
-  return false;
 }
 
 export function InputsStage({ ctx, step, setStep }: { ctx: Ctx; step: number; setStep: (n: number) => void }) {
   const levelForStep = (i: number) => {
-    // Steps with sanity checks show the worst check. Steps without any
-    // (the business, the balance sheet) go green once they're filled in.
+    // Filled-in steps show the worst sanity check on them, or green if none.
+    // Until the model can run (it needs revenue, shares and a price), a dot
+    // just shows whether that step is filled in.
+    if (!stepComplete(ctx.inputs, i)) return null;
     const ls = ctx.ready ? STEP_FIELDS[i].map((f) => worstLevelFor(ctx.checks, f)).filter(Boolean) : [];
-    if (ls.length === 0) return stepComplete(ctx.inputs, i) && (ctx.ready || i === 0 || i === 4) ? "good" : null;
+    if (ls.length === 0) return "good";
     return ls.includes("bad") ? "bad" : ls.includes("warn") ? "warn" : "good";
   };
   const goStep = (n: number) => {
