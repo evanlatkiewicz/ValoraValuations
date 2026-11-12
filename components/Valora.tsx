@@ -12,7 +12,8 @@ import { analyze, caseInputs, getScenarios, isCaseField, SCENARIO_LABEL, type An
 import { CompanyBar } from "./CompanyBar";
 import { onPrivateDeployment, PUBLIC_ORIGIN } from "@/lib/site";
 import type { MarketData } from "@/lib/market";
-import { withBeta, withPrice } from "@/lib/applyMarket";
+import { withBeta, withPrice, withRf } from "@/lib/applyMarket";
+import type { RiskFree } from "@/lib/rates";
 import type { DcfInputs, DcfResult } from "@/lib/types";
 import { Mark } from "./ui";
 import { InputsStage } from "./InputsStage";
@@ -40,6 +41,8 @@ export interface Ctx {
   marketError: string | null;
   applyPrice: () => void;
   applyBeta: () => void;
+  rf: RiskFree | null;
+  applyRf: () => void;
 }
 
 const STAGES: { id: Stage; label: string }[] = [
@@ -71,6 +74,13 @@ export default function Valora() {
   const [market, setMarket] = useState<MarketData | null>(null);
   const [marketError, setMarketError] = useState<string | null>(null);
   const [privateLink, setPrivateLink] = useState(false);
+  const [rf, setRf] = useState<RiskFree | null>(null);
+  useEffect(() => {
+    fetch("/api/rates")
+      .then((r) => r.json())
+      .then((d: RiskFree) => setRf(d))
+      .catch(() => setRf(null));
+  }, []);
   useEffect(() => setPrivateLink(onPrivateDeployment()), []);
 
   // Open a shared model from the link, or pick up where this tab left off
@@ -159,7 +169,7 @@ export default function Valora() {
   }, []);
 
   const startBlank = () => {
-    const next = blankInputs();
+    const next = rf?.live ? withRf(blankInputs(), rf) : blankInputs();
     setInputs(next);
     setBaseline(next);
     setPreset("blank");
@@ -200,6 +210,7 @@ export default function Valora() {
   }, [tickerNow, preset, restored, market?.ticker, fetchMarket]);
 
   const applyPrice = () => market && setInputs((prev) => withPrice(prev, market));
+  const applyRf = () => rf && setInputs((prev) => withRf(prev, rf));
   const applyBeta = () => market && setInputs((prev) => withBeta(prev, market));
 
   const loadTicker = async (raw: string) => {
@@ -260,7 +271,7 @@ export default function Valora() {
 
   const ctx: Ctx = {
     inputs: view, raw: inputs, scenario, setScenario, analysis, setWeights, resetCases,
-    result, checks, stars, ready, missing, update, go, market, marketError, applyPrice, applyBeta,
+    result, checks, stars, ready, missing, update, go, market, marketError, applyPrice, applyBeta, rf, applyRf,
   };
   const name = inputs.company.name || "Untitled company";
 

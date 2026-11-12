@@ -1,5 +1,6 @@
 import { fmtDate, type MarketData } from "./market";
 import type { DcfInputs } from "./types";
+import { rfNote, type RiskFree } from "./rates";
 
 export const betaNote = (m: MarketData) =>
   m.beta
@@ -21,5 +22,14 @@ export function withBeta(inputs: DcfInputs, m: MarketData): DcfInputs {
     ...inputs,
     beta: Math.round(m.beta.adjusted * 100) / 100,
     sources: { ...inputs.sources, beta: { kind: "market", note: betaNote(m) } },
+  };
+}
+
+/** Use the latest 10-year Treasury yield as the risk-free rate. */
+export function withRf(inputs: DcfInputs, rf: RiskFree): DcfInputs {
+  return {
+    ...inputs,
+    riskFreeRate: rf.rate,
+    sources: { ...inputs.sources, riskFreeRate: { kind: "market", note: rfNote(rf) } },
   };
 }

@@ -543,7 +543,20 @@ function DiscountRate({ ctx }: { ctx: Ctx }) {
           help="Yield on the 10-year US Treasury."
           dot={lvl("riskFreeRate")}
           input={<NumInput kind="pct" label="Risk-free rate" level={lvl("riskFreeRate")} value={i.riskFreeRate} onChange={(n) => set("riskFreeRate", n)} />}
-          notes={<Notes ctx={ctx} id="riskFreeRate" />}
+          notes={
+            <Notes
+              ctx={ctx}
+              id="riskFreeRate"
+              extra={
+                ctx.rf?.live && Math.abs(ctx.rf.rate - i.riskFreeRate) > 0.00005 ? (
+                  <span className="market-note">
+                    <span className="ref">Latest 10-year Treasury: {pct(ctx.rf.rate, 2)}</span>
+                    <button className="btn ghost small" onClick={ctx.applyRf}>Use latest rate</button>
+                  </span>
+                ) : undefined
+              }
+            />
+          }
         />
         <Field
           label="Beta"

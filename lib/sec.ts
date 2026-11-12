@@ -2,6 +2,7 @@
 // Pure functions only, so it can be tested offline against saved fixtures.
 
 import { MARKET } from "./companies";
+import { FALLBACK_RF, rfNote, type RiskFree } from "./rates";
 import type { DcfInputs, HistoricalYear, Source } from "./types";
 
 interface Fact {
@@ -176,7 +177,7 @@ export function tidyName(raw: string): string {
 const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x));
 const round = (x: number, step = 0.005) => Number((Math.round(x / step) * step).toFixed(4));
 
-export function inputsFromFacts(f: CompanyFacts, ticker: string): LoadResult {
+export function inputsFromFacts(f: CompanyFacts, ticker: string, rf: RiskFree = FALLBACK_RF): LoadResult {
   const warnings: string[] = [];
   const rev = pick(f, C.revenue, "annual");
   const ebitSeries = pick(f, C.ebit, "annual");
@@ -279,7 +280,7 @@ export function inputsFromFacts(f: CompanyFacts, ticker: string): LoadResult {
     sharesOutstanding: sh ? filing(sh.note) : { kind: "user" },
     cash: filing(`Cash ${Math.round(cash).toLocaleString("en-US")} + current securities ${Math.round(secCur).toLocaleString("en-US")} + long-term securities ${Math.round(secNon).toLocaleString("en-US")}`),
     debt: filing(`Total borrowings at ${baseEnd}. Leases are not included.`),
-    riskFreeRate: { kind: "market", note: MARKET.riskFreeNote },
+    riskFreeRate: { kind: "market", note: rfNote(rf) },
     beta: { kind: "assumption", note: "1.0 is the market average. Look up this company's beta and replace it." },
     equityRiskPremium: { kind: "market", note: MARKET.erpNote, url: MARKET.erpUrl },
     preTaxCostOfDebt: { kind: "assumption", note: "Risk-free rate plus 1.5 points. Riskier borrowers pay more." },
@@ -301,10 +302,10 @@ export function inputsFromFacts(f: CompanyFacts, ticker: string): LoadResult {
     sharesOutstanding: sh?.value ?? 0,
     cash: cash + secCur + secNon,
     debt,
-    riskFreeRate: MARKET.riskFreeRate,
+    riskFreeRate: rf.rate,
     beta: 1.0,
     equityRiskPremium: MARKET.equityRiskPremium,
-    preTaxCostOfDebt: Math.round((MARKET.riskFreeRate + 0.015) * 1000) / 1000,
+    preTaxCostOfDebt: Math.round((rf.rate + 0.015) * 10000) / 10000,
     terminalMethod: "gordon",
     terminalGrowth: 0.025,
     exitMultiple: 12,

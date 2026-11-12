@@ -51,7 +51,7 @@ export default function Page() {
           <tr><td>Tax rate</td><td>The base year effective rate, or 21% if the reported rate looks unusual</td></tr>
           <tr><td>D&amp;A and working capital</td><td>The base year as a percent of revenue</td></tr>
           <tr><td>Capex</td><td>The average percent of revenue over the last three years</td></tr>
-          <tr><td>Risk-free rate</td><td>{pct(MARKET.riskFreeRate)}, the 10-year Treasury yield as of late October 2026</td></tr>
+          <tr><td>Risk-free rate</td><td>The latest 10-year Treasury yield, pulled from the Federal Reserve&rsquo;s FRED database and refreshed every few hours</td></tr>
           <tr><td>Equity risk premium</td><td>{pct(MARKET.equityRiskPremium)}, in line with Aswath Damodaran&rsquo;s implied US premium in 2026</td></tr>
           <tr><td>Beta</td><td>1.0, the market average, until you look up the company&rsquo;s own beta</td></tr>
           <tr><td>Terminal growth</td><td>2.5%</td></tr>

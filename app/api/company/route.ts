@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { inputsFromFacts, SecDataError, trimFacts, type CompanyFacts } from "@/lib/sec";
+import { fetchRiskFree } from "@/lib/rates";
 
 // SEC asks every automated tool to identify itself with a contact email.
 // Set SEC_CONTACT_EMAIL in Vercel (Settings > Environment Variables).
@@ -50,8 +51,9 @@ export async function GET(req: Request) {
     if (res.status === 404) return fail(404, `${entry.title} has no financial data on file with the SEC.`);
     if (!res.ok) return fail(502, `The SEC didn't respond (status ${res.status}). Try again in a minute.`);
 
-    const facts = trimFacts((await res.json()) as CompanyFacts);
-    const result = inputsFromFacts(facts, ticker);
+    const [json, rf] = await Promise.all([res.json(), fetchRiskFree()]);
+    const facts = trimFacts(json as CompanyFacts);
+    const result = inputsFromFacts(facts, ticker, rf);
     return NextResponse.json(result, {
       headers: { "Cache-Control": "public, s-maxage=21600, stale-while-revalidate=86400" },
     });
