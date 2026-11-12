@@ -1,16 +1,33 @@
 import { APPLE } from "./companies";
 import type { DcfInputs, Source } from "./types";
 
-// A shared model lives entirely in the link (after the #), so links work on
-// any host with no database, and nothing is stored on a server.
+// A shared model lives entirely in the link, so links work on any host with
+// no database and nothing is stored on a server.
+//
+// Current links: /?m=z<compressed>. The server can read them, which is what
+// lets LinkedIn and others draw a preview card. Older links used /#m=<plain>,
+// and those still open.
 
 const VERSION = 1;
 
-function toBase64Url(s: string): string {
-  const bytes = new TextEncoder().encode(s);
+function bytesToBase64Url(bytes: Uint8Array): string {
   let bin = "";
   bytes.forEach((b) => (bin += String.fromCharCode(b)));
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function base64UrlToBytes(s: string): Uint8Array {
+  const b64 = s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4);
+  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+}
+
+function toBase64Url(s: string): string {
+  return bytesToBase64Url(new TextEncoder().encode(s));
+}
+
+async function pipe(bytes: Uint8Array, stream: CompressionStream | DecompressionStream): Promise<Uint8Array> {
+  const out = new Blob([bytes as BlobPart]).stream().pipeThrough(stream);
+  return new Uint8Array(await new Response(out).arrayBuffer());
 }
 
 function fromBase64Url(s: string): string {
@@ -22,9 +39,37 @@ function fromBase64Url(s: string): string {
 
 // Only the kind of each source travels in the link. Notes for the preloaded
 // company are restored from the preset when the link is opened.
-export function encodeInputs(inputs: DcfInputs): string {
+function payload(inputs: DcfInputs): string {
   const kinds = Object.fromEntries(Object.entries(inputs.sources).map(([k, s]) => [k, s.kind]));
-  return toBase64Url(JSON.stringify({ v: VERSION, m: { ...inputs, sources: kinds } }));
+  return JSON.stringify({ v: VERSION, m: { ...inputs, sources: kinds } });
+}
+
+/** Original format, kept so old links keep working. */
+export function encodeInputs(inputs: DcfInputs): string {
+  return toBase64Url(payload(inputs));
+}
+
+/** Compressed token for ?m= links. */
+export async function encodeCompact(inputs: DcfInputs): Promise<string> {
+  const z = await pipe(new TextEncoder().encode(payload(inputs)), new CompressionStream("deflate-raw"));
+  return "z" + bytesToBase64Url(z);
+}
+
+/** Reads either token format. Returns null for anything invalid. */
+export async function decodeAny(token: string): Promise<DcfInputs | null> {
+  if (!token.startsWith("z")) return decodeInputs(token);
+  try {
+    const raw = await pipe(base64UrlToBytes(token.slice(1)), new DecompressionStream("deflate-raw"));
+    if (raw.length > 200_000) return null;
+    return fromJson(new TextDecoder().decode(raw));
+  } catch {
+    return null;
+  }
+}
+
+/** Builds the full share URL for a model. */
+export async function shareUrl(origin: string, inputs: DcfInputs): Promise<string> {
+  return `${origin}/?m=${await encodeCompact(inputs)}`;
 }
 
 function restoreSources(m: DcfInputs, raw: Record<string, unknown>): DcfInputs["sources"] {
@@ -43,7 +88,15 @@ function restoreSources(m: DcfInputs, raw: Record<string, unknown>): DcfInputs["
 
 export function decodeInputs(token: string): DcfInputs | null {
   try {
-    const parsed = JSON.parse(fromBase64Url(token));
+    return fromJson(fromBase64Url(token));
+  } catch {
+    return null;
+  }
+}
+
+function fromJson(json: string): DcfInputs | null {
+  try {
+    const parsed = JSON.parse(json);
     if (parsed?.v !== VERSION) return null;
     const m = parsed.m as DcfInputs;
     const okArrays =

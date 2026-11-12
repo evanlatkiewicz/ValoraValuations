@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { APPLE } from "@/lib/companies";
-import { encodeInputs } from "@/lib/share";
+import { shareUrl } from "@/lib/share";
 import { loadSession } from "@/lib/session";
 import type { DcfInputs } from "@/lib/types";
 
@@ -45,7 +45,7 @@ export function Menu({ inputs, canExport = true }: { inputs?: DcfInputs; canExpo
   const model = () => inputs ?? loadSession()?.inputs ?? APPLE;
 
   const share = async () => {
-    const url = `${window.location.origin}/#m=${encodeInputs(model())}`;
+    const url = await shareUrl(window.location.origin, model());
     try {
       await navigator.clipboard.writeText(url);
       setStatus("Link copied");

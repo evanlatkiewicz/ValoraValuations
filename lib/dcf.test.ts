@@ -4,7 +4,8 @@ import { scenarios } from "../verification/make-scenarios";
 import { reverseDcf, runDcf, sensitivity } from "./dcf";
 import { runChecks, starRating } from "./checks";
 import { APPLE } from "./companies";
-import { decodeInputs, encodeInputs } from "./share";
+import { decodeAny, decodeInputs, encodeCompact, encodeInputs } from "./share";
+import { cardQuery, readCard, summarize } from "./og";
 
 const close = (a: number, b: number, rel = 1e-9) =>
   expect(Math.abs(a - b) / Math.max(1, Math.abs(b))).toBeLessThan(rel);
@@ -94,5 +95,30 @@ describe("cash-burning models", () => {
     const checks = runChecks(burn, r);
     expect(checks.find((c) => c.id === "fcf")?.level).toBe("bad");
     expect(starRating(checks)).toBeLessThanOrEqual(3);
+  });
+});
+
+describe("compressed share links and preview cards", () => {
+  it("round-trips through the compressed format and is shorter", async () => {
+    const edited = { ...APPLE, terminalGrowth: 0.027 };
+    const z = await encodeCompact(edited);
+    expect(z.startsWith("z")).toBe(true);
+    expect(z.length).toBeLessThan(encodeInputs(edited).length);
+    expect(await decodeAny(z)).toEqual(edited);
+  });
+  it("still opens old-format links", async () => {
+    expect(await decodeAny(encodeInputs(APPLE))).toEqual(APPLE);
+    expect(await decodeAny("zNOTVALID")).toBeNull();
+  });
+  it("summarizes a model for the card and survives the query string", () => {
+    const card = summarize(APPLE)!;
+    expect(card.value).toBeCloseTo(176.38, 2);
+    const back = readCard(new URLSearchParams(cardQuery(card)))!;
+    expect(back.name).toBe("Apple Inc.");
+    expect(back.value).toBeCloseTo(176.38, 2);
+    expect(back.stars).toBe(card.stars);
+  });
+  it("has no card until the model has a price", () => {
+    expect(summarize({ ...APPLE, sharePrice: 0 })).toBeNull();
   });
 });

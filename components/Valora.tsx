@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { baseYear, runDcf } from "@/lib/dcf";
 import { runChecks, starRating, type Check } from "@/lib/checks";
 import { APPLE, blankInputs } from "@/lib/companies";
-import { decodeInputs } from "@/lib/share";
+import { decodeAny, decodeInputs } from "@/lib/share";
 import { loadSession, saveSession } from "@/lib/session";
 import { Menu } from "./Menu";
 import type { DcfInputs, DcfResult } from "@/lib/types";
@@ -54,8 +54,10 @@ export default function Valora() {
 
   // Open a shared model from the link, or pick up where this tab left off
   useEffect(() => {
+    (async () => {
+    const q = new URLSearchParams(window.location.search).get("m");
     const h = window.location.hash;
-    const d = h.startsWith("#m=") ? decodeInputs(h.slice(3)) : null;
+    const d = q ? await decodeAny(q) : h.startsWith("#m=") ? decodeInputs(h.slice(3)) : null;
     if (d) {
       setInputs(d);
       setBaseline(d);
@@ -72,6 +74,7 @@ export default function Valora() {
       }
     }
     setRestored(true);
+    })();
   }, []);
 
   useEffect(() => {
