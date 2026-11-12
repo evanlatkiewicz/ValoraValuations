@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { Menu } from "./Menu";
+import { ToolNav } from "./ToolNav";
 import { Mark } from "./ui";
 
 const NAV: { group: string; items: [string, string][] }[] = [
@@ -35,7 +36,7 @@ export function PageShell({ children }: { children: ReactNode }) {
             <Mark />
             <span className="brand-name">Valora</span>
           </Link>
-          <Link className="back-link" href="/">Back to your model</Link>
+          <ToolNav />
           <Menu />
         </div>
       </header>

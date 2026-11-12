@@ -1,47 +1,23 @@
 import type { Metadata } from "next";
-import Valora from "@/components/Valora";
-import { decodeAny } from "@/lib/share";
-import { cardQuery, summarize } from "@/lib/og";
+import { redirect } from "next/navigation";
+import { Home } from "@/components/Home";
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
-const DEFAULT_TITLE = "Valora: build a DCF from the ground up";
-const DEFAULT_DESC =
-  "A guided discounted cash flow builder for students. Load any US company from its 10-K, compile the model, and test every assumption.";
+const TITLE = "Valora: valuation tools for students";
+const DESC =
+  "Value companies and options from live filings and market data, one assumption at a time, with the math shown at every step.";
 
-// Shared links (/?m=...) get their own title and preview card.
-export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESC,
+  openGraph: { title: TITLE, description: DESC, images: [{ url: "/og", width: 1200, height: 630 }], type: "website", siteName: "Valora" },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESC, images: ["/og"] },
+};
+
+export default async function Page({ searchParams }: Props) {
+  // Share links made before the toolkit pointed at the home page
   const m = (await searchParams).m;
-  const token = typeof m === "string" ? m : null;
-  const inputs = token ? await decodeAny(token) : null;
-  const card = inputs ? summarize(inputs) : null;
-
-  if (!card) {
-    return {
-      title: DEFAULT_TITLE,
-      description: DEFAULT_DESC,
-      openGraph: { title: DEFAULT_TITLE, description: DEFAULT_DESC, images: [{ url: "/og", width: 1200, height: 630 }], type: "website", siteName: "Valora" },
-      twitter: { card: "summary_large_image", title: DEFAULT_TITLE, description: DEFAULT_DESC, images: ["/og"] },
-    };
-  }
-
-  const who = card.ticker ? `${card.name} (${card.ticker})` : card.name;
-  const money = (n: number) => `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  const upside = card.value / card.price - 1;
-  const title = `${who}: ${money(card.value)} per share | Valora DCF`;
-  const description = card.warn
-    ? `A DCF of ${card.name} on Valora. Cash flow is still negative in year 5, so the value isn't meaningful yet. Open the model and change the assumptions.`
-    : `A DCF of ${card.name} on Valora: ${money(card.value)} per share, ${Math.abs(upside * 100).toFixed(0)}% ${upside < 0 ? "below" : "above"} the ${money(card.price)} market price. Model quality ${card.stars} of 5 stars. Open it and change any assumption.`;
-  const image = `/og?${cardQuery(card)}`;
-
-  return {
-    title,
-    description,
-    openGraph: { title, description, images: [{ url: image, width: 1200, height: 630, alt: title }], type: "website", siteName: "Valora" },
-    twitter: { card: "summary_large_image", title, description, images: [image] },
-  };
-}
-
-export default function Page() {
-  return <Valora />;
+  if (typeof m === "string") redirect(`/dcf?m=${encodeURIComponent(m)}`);
+  return <Home />;
 }

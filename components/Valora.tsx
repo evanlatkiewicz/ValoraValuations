@@ -16,6 +16,8 @@ import { withBeta, withPrice, withRf } from "@/lib/applyMarket";
 import type { RiskFree } from "@/lib/rates";
 import type { DcfInputs, DcfResult } from "@/lib/types";
 import { Mark } from "./ui";
+import Link from "next/link";
+import { ToolNav } from "./ToolNav";
 import { InputsStage } from "./InputsStage";
 import { ModelStage } from "./ModelStage";
 import { ResultsStage } from "./ResultsStage";
@@ -279,11 +281,11 @@ export default function Valora() {
     <>
       <header className="top">
         <div className="top-inner">
-          <a className="brand" href="/" onClick={(e) => { e.preventDefault(); setHome(true); setNotice(null); window.scrollTo({ top: 0 }); }}>
+          <Link className="brand" href="/">
             <Mark />
             <span className="brand-name">Valora</span>
-            <span className="brand-sub">Build a DCF from the ground up</span>
-          </a>
+          </Link>
+          <ToolNav />
           {!home ? (
             <div className="company-pick">
               <form className="ticker-form" onSubmit={(e) => { e.preventDefault(); loadTicker(ticker); }} role="search">
@@ -307,6 +309,9 @@ export default function Valora() {
                   Reset to starting values
                 </button>
               )}
+              <button className="linkbtn reset-btn" onClick={() => { setHome(true); setNotice(null); window.scrollTo({ top: 0 }); }}>
+                New valuation
+              </button>
             </div>
           ) : (
             <span />

@@ -13,9 +13,9 @@ const site = process.env.VERCEL_PROJECT_PRODUCTION_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(site),
-  title: "Valora: build a DCF from the ground up",
+  title: "Valora: valuation tools for students",
   description:
-    "A guided discounted cash flow builder for students. Enter assumptions step by step, see the compiled model, and test it with sanity checks and sensitivity tables.",
+    "Value companies and options from live filings and market data, one assumption at a time, with the math shown at every step.",
   icons: { icon: "/icon.svg" },
 };
 

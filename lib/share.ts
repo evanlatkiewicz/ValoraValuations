@@ -6,7 +6,7 @@ import type { DcfInputs, Source } from "./types";
 // A shared model lives entirely in the link, so links work on any host with
 // no database and nothing is stored on a server.
 //
-// Current links: /?m=z<compressed>. The server can read them, which is what
+// Current links: /dcf?m=z<compressed> (older /?m= links forward there). The server can read them, which is what
 // lets LinkedIn and others draw a preview card. Older links used /#m=<plain>,
 // and those still open.
 
@@ -71,7 +71,7 @@ export async function decodeAny(token: string): Promise<DcfInputs | null> {
 
 /** Builds the full share URL for a model. */
 export async function shareUrl(origin: string, inputs: DcfInputs): Promise<string> {
-  return `${origin}/?m=${await encodeCompact(inputs)}`;
+  return `${origin}/dcf?m=${await encodeCompact(inputs)}`;
 }
 
 function restoreSources(m: DcfInputs, raw: Record<string, unknown>): DcfInputs["sources"] {

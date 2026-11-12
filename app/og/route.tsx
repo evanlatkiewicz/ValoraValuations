@@ -118,10 +118,10 @@ export async function GET(req: Request) {
           </div>
           <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", flex: 1, padding: "0 64px", gap: 22 }}>
             <div style={{ fontSize: 78, fontWeight: 800, letterSpacing: -3, lineHeight: 1.02, maxWidth: 1000 }}>
-              Value any US company from its 10-K, one assumption at a time.
+              Valuation tools for students, built on live market data.
             </div>
             <div style={{ fontSize: 30, color: SOFT, maxWidth: 940, lineHeight: 1.35 }}>
-              A guided discounted cash flow builder for students, with sanity checks on every input.
+              Value companies from their 10-Ks and price options with Black-Scholes, one assumption at a time.
             </div>
           </div>
           <Footer host={host} note="Free to use, no sign-up" />

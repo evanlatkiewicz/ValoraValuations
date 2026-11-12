@@ -115,7 +115,7 @@ export default function Page() {
         WACC of about {EX.revWacc}, or perpetual growth of {EX.revG}. Asking which of those you believe is the real point of the exercise.
       </p>
       <p className="callout">
-        <Link href="/">Build the Apple model yourself</Link>, or load any company by ticker and see how its numbers compare.
+        <Link href="/dcf">Value a company yourself</Link>: load any ticker and see how its numbers compare.
       </p>
     </PageShell>
   );
