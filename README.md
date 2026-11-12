@@ -10,6 +10,8 @@ Valora walks you through a DCF one assumption at a time, compiles the full model
 - **Sanity checks.** Green, yellow and red flags on each input, rolled up into a 1 to 5 star model-quality rating.
 - **Results.** Value bridge, free cash flow chart, WACC and terminal value sensitivity tables, and a reverse DCF that shows what the market price implies.
 - **Share links.** The whole model is encoded in the link, so there's no database and nothing stored on a server.
+- **Excel download.** The model as a workbook with live formulas (inputs in blue), checked against the site's numbers.
+- **Learn pages.** How a DCF works, a glossary, and common interview questions answered with Valora's Apple numbers.
 
 Apple is preloaded from its fiscal 2026 results (year ended September 26, 2026). Any other US-listed company can be loaded by ticker: Valora pulls three years of 10-K data from SEC EDGAR and links every number to the filing.
 

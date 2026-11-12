@@ -4,7 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { baseYear, runDcf } from "@/lib/dcf";
 import { runChecks, starRating, type Check } from "@/lib/checks";
 import { APPLE, blankInputs } from "@/lib/companies";
-import { decodeInputs, encodeInputs } from "@/lib/share";
+import { decodeInputs } from "@/lib/share";
+import { loadSession, saveSession } from "@/lib/session";
+import { Menu } from "./Menu";
 import type { DcfInputs, DcfResult } from "@/lib/types";
 import { Mark } from "./ui";
 import { InputsStage } from "./InputsStage";
@@ -46,22 +48,35 @@ export default function Valora() {
   const [notice, setNotice] = useState<{ tone: "info" | "error"; text: string; warnings?: string[] } | null>(null);
   const [stage, setStage] = useState<Stage>("inputs");
   const [step, setStep] = useState(0);
-  const [copied, setCopied] = useState(false);
+  const [baseline, setBaseline] = useState<DcfInputs>(APPLE);
   const [showIntro, setShowIntro] = useState(true);
+  const [restored, setRestored] = useState(false);
 
-  // Open a shared model from the link
+  // Open a shared model from the link, or pick up where this tab left off
   useEffect(() => {
     const h = window.location.hash;
-    if (h.startsWith("#m=")) {
-      const d = decodeInputs(h.slice(3));
-      if (d) {
-        setInputs(d);
-        setPreset("shared");
-        setStage("results");
+    const d = h.startsWith("#m=") ? decodeInputs(h.slice(3)) : null;
+    if (d) {
+      setInputs(d);
+      setBaseline(d);
+      setPreset("shared");
+      setStage("results");
+      setShowIntro(false);
+    } else {
+      const saved = loadSession();
+      if (saved) {
+        setInputs(saved.inputs);
+        setBaseline(saved.baseline);
+        setPreset(saved.preset);
         setShowIntro(false);
       }
     }
+    setRestored(true);
   }, []);
+
+  useEffect(() => {
+    if (restored) saveSession({ inputs, baseline, preset });
+  }, [inputs, baseline, preset, restored]);
 
   const result = useMemo(() => runDcf(inputs), [inputs]);
   const missing = useMemo(() => missingFields(inputs), [inputs]);
@@ -85,7 +100,6 @@ export default function Valora() {
       next.company = { ...next.company, baseYearLabel: next.history[next.history.length - 1].label };
       return next;
     });
-    setCopied(false);
   }, []);
 
   const go = useCallback((s: Stage, st?: number) => {
@@ -95,12 +109,14 @@ export default function Valora() {
   }, []);
 
   const choose = (v: string) => {
-    if (v === "apple") setInputs(APPLE);
-    if (v === "blank") setInputs(blankInputs());
-    if (v === "apple" || v === "blank") setPreset(v);
+    const next = v === "apple" ? APPLE : v === "blank" ? blankInputs() : null;
+    if (next) {
+      setInputs(next);
+      setBaseline(next);
+      setPreset(v as "apple" | "blank");
+    }
     setStage("inputs");
     setStep(0);
-    setCopied(false);
     setNotice(null);
     history.replaceState(null, "", window.location.pathname);
   };
@@ -120,10 +136,10 @@ export default function Valora() {
       }
       const loaded = data.inputs as DcfInputs;
       setInputs(loaded);
+      setBaseline(loaded);
       setPreset("loaded");
       setStage("inputs");
       setStep(0);
-      setCopied(false);
       setShowIntro(false);
       history.replaceState(null, "", window.location.pathname);
       setNotice({
@@ -138,15 +154,10 @@ export default function Valora() {
     }
   };
 
-  const share = async () => {
-    const url = `${window.location.origin}${window.location.pathname}#m=${encodeInputs(inputs)}`;
-    history.replaceState(null, "", url);
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-    } catch {
-      window.prompt("Copy this link", url);
-    }
+  const edited = JSON.stringify(inputs) !== JSON.stringify(baseline);
+  const reset = () => {
+    setInputs(baseline);
+    setNotice(null);
   };
 
   const ctx: Ctx = { inputs, result, checks, stars, ready, missing, update, go };
@@ -156,7 +167,7 @@ export default function Valora() {
     <>
       <header className="top">
         <div className="top-inner">
-          <a className="brand" href="/" onClick={(e) => { e.preventDefault(); choose("apple"); }}>
+          <a className="brand" href="/" onClick={(e) => { e.preventDefault(); go("inputs", 0); }}>
             <Mark />
             <span className="brand-name">Valora</span>
             <span className="brand-sub">Build a DCF from the ground up</span>
@@ -184,13 +195,13 @@ export default function Valora() {
               {preset === "loaded" && <option value="loaded">{name} ({inputs.company.ticker}), {inputs.company.baseYearLabel} 10-K</option>}
               {preset === "shared" && <option value="shared">{name} (shared model)</option>}
             </select>
+            {edited && (
+              <button className="linkbtn reset-btn" onClick={reset}>
+                Reset to starting values
+              </button>
+            )}
           </div>
-          <div className="share">
-            {copied && <span className="share-note" role="status">Link copied</span>}
-            <button className="btn ghost small" onClick={share} disabled={!ready}>
-              Copy share link
-            </button>
-          </div>
+          <Menu inputs={inputs} canExport={ready} />
         </div>
         <nav className="stages" aria-label="Stages">
           {STAGES.map((s, i) => (
@@ -250,7 +261,8 @@ export default function Valora() {
       <footer className="foot">
         <span>Valora is a learning tool, not investment advice. Check figures against the filings before relying on them.</span>
         <span>
-          Made by Evan Latkiewicz. <a href="https://github.com/evanlatkiewicz/dcf-builder">Source on GitHub</a>
+          Made by <a href="https://www.linkedin.com/in/evanlatkiewicz/" target="_blank" rel="noreferrer">Evan Latkiewicz</a>.{" "}
+          <a href="https://github.com/evanlatkiewicz/dcf-builder">Source on GitHub</a>
         </span>
       </footer>
     </>
