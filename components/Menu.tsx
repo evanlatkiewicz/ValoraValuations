@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { APPLE } from "@/lib/companies";
 import { shareUrl } from "@/lib/share";
 import { publicOrigin } from "@/lib/site";
 import { loadSession } from "@/lib/session";
@@ -14,7 +13,17 @@ import type { ScenarioId } from "@/lib/scenarios";
  * About pages it falls back to the model saved for this browser tab.
  */
 export function Menu({ inputs, canExport = true, scenario = "base" }: { inputs?: DcfInputs; canExport?: boolean; scenario?: ScenarioId }) {
-  const [open, setOpen] = useState(false);
+  // "closing" keeps the panel on screen while its exit animation plays
+  const [phase, setPhase] = useState<"closed" | "open" | "closing">("closed");
+  const open = phase === "open";
+  const [available, setAvailable] = useState(false);
+  const reduced = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const close = () => setPhase((p) => (p === "open" ? (reduced() ? "closed" : "closing") : p));
+  const toggle = () => {
+    if (phase === "open") return close();
+    setAvailable(inputs ? canExport : !!loadSession()?.inputs);
+    setPhase("open");
+  };
   const [status, setStatus] = useState<string | null>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -22,11 +31,11 @@ export function Menu({ inputs, canExport = true, scenario = "base" }: { inputs?:
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (!wrap.current?.contains(e.target as Node)) setOpen(false);
+      if (!wrap.current?.contains(e.target as Node)) close();
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setOpen(false);
+        close();
         button.current?.focus();
       }
     };
@@ -44,21 +53,23 @@ export function Menu({ inputs, canExport = true, scenario = "base" }: { inputs?:
     return () => clearTimeout(t);
   }, [status]);
 
-  const model = () => inputs ?? loadSession()?.inputs ?? APPLE;
+  const model = () => inputs ?? loadSession()?.inputs ?? null;
 
   const share = async () => {
-    const url = await shareUrl(publicOrigin(), model());
+    const m = model();
+    if (!m) return;
+    const url = await shareUrl(publicOrigin(), m);
     try {
       await navigator.clipboard.writeText(url);
       setStatus("Link copied");
     } catch {
       window.prompt("Copy this link", url);
     }
-    setOpen(false);
+    close();
   };
 
   const download = async () => {
-    setOpen(false);
+    close();
     setStatus("Building spreadsheet");
     try {
       const [{ default: ExcelJS }, { buildWorkbook, workbookName }] = await Promise.all([
@@ -66,6 +77,7 @@ export function Menu({ inputs, canExport = true, scenario = "base" }: { inputs?:
         import("@/lib/excel"),
       ]);
       const m = model();
+      if (!m) throw new Error("no model");
       const buf = await buildWorkbook(ExcelJS, m, scenario).xlsx.writeBuffer();
       const url = URL.createObjectURL(
         new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
@@ -82,7 +94,7 @@ export function Menu({ inputs, canExport = true, scenario = "base" }: { inputs?:
   };
 
   const item = (href: string, text: string) => (
-    <Link href={href} role="menuitem" className="menu-item" onClick={() => setOpen(false)}>
+    <Link href={href} role="menuitem" className="menu-item" onClick={() => close()}>
       {text}
     </Link>
   );
@@ -95,7 +107,7 @@ export function Menu({ inputs, canExport = true, scenario = "base" }: { inputs?:
         className="btn ghost small menu-btn"
         aria-haspopup="menu"
         aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
       >
         <span className="menu-icon" aria-hidden>
           <i />
@@ -104,14 +116,21 @@ export function Menu({ inputs, canExport = true, scenario = "base" }: { inputs?:
         </span>
         Menu
       </button>
-      {open && (
-        <div className="menu-panel" role="menu">
+      {phase !== "closed" && (
+        <div
+          className="menu-panel"
+          role="menu"
+          data-state={phase}
+          onAnimationEnd={(e) => {
+            if (e.target === e.currentTarget && phase === "closing") setPhase("closed");
+          }}
+        >
           <div className="menu-group">
             <div className="menu-label">This model</div>
-            <button role="menuitem" className="menu-item" onClick={share} disabled={!canExport}>
+            <button role="menuitem" className="menu-item" onClick={share} disabled={!available}>
               Copy share link
             </button>
-            <button role="menuitem" className="menu-item" onClick={download} disabled={!canExport}>
+            <button role="menuitem" className="menu-item" onClick={download} disabled={!available}>
               Download in Excel
             </button>
           </div>

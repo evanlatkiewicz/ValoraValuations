@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { baseYear, runDcf } from "@/lib/dcf";
 import { runChecks, starRating, type Check } from "@/lib/checks";
-import { APPLE, blankInputs } from "@/lib/companies";
+import { blankInputs } from "@/lib/companies";
+import { StartScreen } from "./StartScreen";
 import { decodeAny, decodeInputs } from "@/lib/share";
 import { loadSession, saveSession } from "@/lib/session";
 import { Menu } from "./Menu";
@@ -56,15 +57,16 @@ function missingFields(inputs: DcfInputs): string[] {
 }
 
 export default function Valora() {
-  const [inputs, setInputs] = useState<DcfInputs>(APPLE);
-  const [preset, setPreset] = useState<"apple" | "blank" | "shared" | "loaded">("apple");
+  const [inputs, setInputs] = useState<DcfInputs>(blankInputs);
+  const [preset, setPreset] = useState<"blank" | "shared" | "loaded">("blank");
+  const [home, setHome] = useState(true); // the "Let's get started" screen
+  const [hasModel, setHasModel] = useState(false);
   const [ticker, setTicker] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ tone: "info" | "error"; text: string; warnings?: string[] } | null>(null);
   const [stage, setStage] = useState<Stage>("inputs");
   const [step, setStep] = useState(0);
-  const [baseline, setBaseline] = useState<DcfInputs>(APPLE);
-  const [showIntro, setShowIntro] = useState(true);
+  const [baseline, setBaseline] = useState<DcfInputs>(blankInputs);
   const [restored, setRestored] = useState(false);
   const [market, setMarket] = useState<MarketData | null>(null);
   const [marketError, setMarketError] = useState<string | null>(null);
@@ -82,14 +84,16 @@ export default function Valora() {
       setBaseline(d);
       setPreset("shared");
       setStage("results");
-      setShowIntro(false);
+      setHome(false);
+      setHasModel(true);
     } else {
       const saved = loadSession();
-      if (saved) {
+      if (saved && saved.preset !== "apple") {
         setInputs(saved.inputs);
         setBaseline(saved.baseline);
         setPreset(saved.preset);
-        setShowIntro(false);
+        setHome(saved.home ?? false);
+        setHasModel(true);
       }
     }
     setRestored(true);
@@ -97,8 +101,8 @@ export default function Valora() {
   }, []);
 
   useEffect(() => {
-    if (restored) saveSession({ inputs, baseline, preset });
-  }, [inputs, baseline, preset, restored]);
+    if (restored && hasModel) saveSession({ inputs, baseline, preset, home });
+  }, [inputs, baseline, preset, home, restored, hasModel]);
 
   const [scenario, setScenarioState] = useState<ScenarioId>("base");
   const scenarioRef = useRef<ScenarioId>("base");
@@ -154,13 +158,14 @@ export default function Valora() {
     window.scrollTo({ top: 0 });
   }, []);
 
-  const choose = (v: string) => {
-    const next = v === "apple" ? APPLE : v === "blank" ? blankInputs() : null;
-    if (next) {
-      setInputs(next);
-      setBaseline(next);
-      setPreset(v as "apple" | "blank");
-    }
+  const startBlank = () => {
+    const next = blankInputs();
+    setInputs(next);
+    setBaseline(next);
+    setPreset("blank");
+    setMarket(null);
+    setHome(false);
+    setHasModel(true);
     setStage("inputs");
     setStep(0);
     setScenario("base");
@@ -197,11 +202,11 @@ export default function Valora() {
   const applyPrice = () => market && setInputs((prev) => withPrice(prev, market));
   const applyBeta = () => market && setInputs((prev) => withBeta(prev, market));
 
-  const loadTicker = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const t = ticker.trim().toUpperCase();
-    if (!t) return;
-    setLoading(true);
+  const loadTicker = async (raw: string) => {
+    const t = raw.trim().toUpperCase();
+    if (!t || loading) return;
+    setTicker(t);
+    setLoading(`Reading ${t}'s 10-K`);
     setNotice(null);
     try {
       const res = await fetch(`/api/company?ticker=${encodeURIComponent(t)}`);
@@ -211,6 +216,7 @@ export default function Valora() {
         return;
       }
       let loaded = data.inputs as DcfInputs;
+      setLoading("Getting prices and beta");
       const m = await fetchMarket(loaded.company.ticker);
       if (m) loaded = withBeta(withPrice(loaded, m), m);
       setInputs(loaded);
@@ -219,7 +225,9 @@ export default function Valora() {
       setScenario("base");
       setStage("inputs");
       setStep(0);
-      setShowIntro(false);
+      setHome(false);
+      setHasModel(true);
+      setTicker("");
       history.replaceState(null, "", window.location.pathname);
       setNotice({
         tone: "info",
@@ -231,7 +239,7 @@ export default function Valora() {
     } catch {
       setNotice({ tone: "error", text: "Couldn't reach the server. Check your connection and try again." });
     } finally {
-      setLoading(false);
+      setLoading(null);
     }
   };
 
@@ -260,55 +268,55 @@ export default function Valora() {
     <>
       <header className="top">
         <div className="top-inner">
-          <a className="brand" href="/" onClick={(e) => { e.preventDefault(); go("inputs", 0); }}>
+          <a className="brand" href="/" onClick={(e) => { e.preventDefault(); setHome(true); setNotice(null); window.scrollTo({ top: 0 }); }}>
             <Mark />
             <span className="brand-name">Valora</span>
             <span className="brand-sub">Build a DCF from the ground up</span>
           </a>
-          <div className="company-pick">
-            <form className="ticker-form" onSubmit={loadTicker} role="search">
-              <label htmlFor="ticker" className="sr-only">Ticker symbol</label>
-              <input
-                id="ticker"
-                className="ticker-input"
-                placeholder="Ticker, like MSFT"
-                value={ticker}
-                onChange={(e) => setTicker(e.target.value.toUpperCase())}
-                autoComplete="off"
-                spellCheck={false}
-                maxLength={10}
-              />
-              <button className="btn small" type="submit" disabled={loading || !ticker.trim()}>
-                {loading ? "Loading" : "Load from SEC"}
-              </button>
-            </form>
-            <select aria-label="Current company" value={preset} onChange={(e) => choose(e.target.value)}>
-              <option value="apple">Apple (AAPL), preloaded</option>
-              <option value="blank">Start from scratch</option>
-              {preset === "loaded" && <option value="loaded">{name} ({inputs.company.ticker}), {inputs.company.baseYearLabel} 10-K</option>}
-              {preset === "shared" && <option value="shared">{name} (shared model)</option>}
-            </select>
-            {edited && (
-              <button className="linkbtn reset-btn" onClick={reset}>
-                Reset to starting values
-              </button>
-            )}
-          </div>
-          <Menu inputs={inputs} canExport={ready} scenario={scenario} />
+          {!home ? (
+            <div className="company-pick">
+              <form className="ticker-form" onSubmit={(e) => { e.preventDefault(); loadTicker(ticker); }} role="search">
+                <label htmlFor="ticker" className="sr-only">Ticker symbol</label>
+                <input
+                  id="ticker"
+                  className="ticker-input"
+                  placeholder="Another ticker"
+                  value={ticker}
+                  onChange={(e) => setTicker(e.target.value.toUpperCase())}
+                  autoComplete="off"
+                  spellCheck={false}
+                  maxLength={10}
+                />
+                <button className="btn small" type="submit" disabled={!!loading || !ticker.trim()}>
+                  {loading ? "Loading" : "Load"}
+                </button>
+              </form>
+              {edited && (
+                <button className="linkbtn reset-btn" onClick={reset}>
+                  Reset to starting values
+                </button>
+              )}
+            </div>
+          ) : (
+            <span />
+          )}
+          <Menu inputs={hasModel ? inputs : undefined} canExport={hasModel && ready} scenario={scenario} />
         </div>
-        <nav className="stages" aria-label="Stages">
-          {STAGES.map((s, i) => (
-            <button
-              key={s.id}
-              className="stage-tab"
-              aria-current={stage === s.id ? "page" : undefined}
-              onClick={() => go(s.id)}
-            >
-              <span className="n">{i + 1}</span>
-              {s.label}
-            </button>
-          ))}
-        </nav>
+        {!home && (
+          <nav className="stages" aria-label="Stages">
+            {STAGES.map((s, i) => (
+              <button
+                key={s.id}
+                className="stage-tab"
+                aria-current={stage === s.id ? "page" : undefined}
+                onClick={() => go(s.id)}
+              >
+                <span className="n">{i + 1}</span>
+                {s.label}
+              </button>
+            ))}
+          </nav>
+        )}
       </header>
 
       {privateLink && (
@@ -320,6 +328,18 @@ export default function Valora() {
         </div>
       )}
 
+      {home ? (
+        <StartScreen
+          ticker={ticker}
+          setTicker={setTicker}
+          onLoad={loadTicker}
+          loading={loading}
+          error={notice?.tone === "error" ? notice.text : null}
+          onBlank={startBlank}
+          resume={hasModel ? { name: inputs.company.name || "your model", go: () => setHome(false) } : null}
+        />
+      ) : (
+      <>
       <CompanyBar
         inputs={view}
         logo={market && market.ticker === inputs.company.ticker.toUpperCase() ? market.logo : null}
@@ -359,24 +379,13 @@ export default function Valora() {
         </div>
       )}
 
-      {showIntro && !notice && stage === "inputs" && (
-        <div className="intro">
-          <div className="intro-inner">
-            <p>
-              <strong>A discounted cash flow model values a company by the cash it will generate.</strong>{" "}
-              Valora walks you through one assumption at a time, compiles the model, then tests it.
-              Apple is loaded from its latest 10-K so you can explore. Switch to a blank model when you want to build your own.
-            </p>
-            <button className="linkbtn" onClick={() => setShowIntro(false)}>Hide</button>
-          </div>
-        </div>
-      )}
-
       <main>
         {stage === "inputs" && <InputsStage ctx={ctx} step={step} setStep={setStep} />}
         {stage === "model" && <ModelStage ctx={ctx} />}
         {stage === "results" && <ResultsStage ctx={ctx} />}
       </main>
+      </>
+      )}
 
       <footer className="foot">
         <span>Valora is a learning tool, not investment advice. Check figures against the filings before relying on them.</span>

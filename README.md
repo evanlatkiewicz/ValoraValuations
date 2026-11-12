@@ -13,7 +13,7 @@ Valora walks you through a DCF one assumption at a time, compiles the full model
 - **Excel download.** The model as a workbook with live formulas (inputs in blue), checked against the site's numbers.
 - **Learn pages.** How a DCF works, a glossary, and common interview questions answered with Valora's Apple numbers.
 
-Apple is preloaded from its fiscal 2026 results (year ended September 26, 2026). Any other US-listed company can be loaded by ticker: Valora pulls three years of 10-K data from SEC EDGAR and links every number to the filing.
+Start by entering a ticker: Valora pulls three years of 10-K data from SEC EDGAR (with a link to the filing for every number), plus the latest share price, a calculated beta and the company logo from Twelve Data. You can also start from a blank model.
 
 ## Setup
 
@@ -21,6 +21,7 @@ Ticker search calls the SEC's free XBRL API. The SEC requires every automated to
 
 ```
 SEC_CONTACT_EMAIL=you@example.com
+TWELVE_DATA_API_KEY=your-key   # prices, beta and logos
 ```
 
 ## Run it locally

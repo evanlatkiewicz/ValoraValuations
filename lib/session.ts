@@ -7,7 +7,8 @@ const KEY = "valora:model";
 export interface Saved {
   inputs: DcfInputs;
   baseline: DcfInputs;
-  preset: "apple" | "blank" | "shared" | "loaded";
+  preset: "apple" | "blank" | "shared" | "loaded"; // "apple" only appears in older sessions
+  home?: boolean;
 }
 
 export function saveSession(s: Saved) {

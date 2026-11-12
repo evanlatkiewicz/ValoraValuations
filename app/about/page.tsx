@@ -32,11 +32,11 @@ export default function Page() {
       </p>
       <p>
         Banks and insurers don&rsquo;t report operating income the way other companies do, and a standard DCF doesn&rsquo;t fit them, so
-        Valora explains that instead of loading them. Share prices aren&rsquo;t in SEC filings, so you enter today&rsquo;s price yourself.
+        Valora explains that instead of loading them. Share prices aren&rsquo;t in SEC filings, so Valora adds the latest closing price from Twelve Data.
       </p>
       <p>
-        Apple is preloaded from its fiscal 2026 results. Those figures were entered by hand from the filing, and the automatic SEC loader is
-        tested against them.
+        The SEC loader is tested against Apple&rsquo;s fiscal 2026 10-K figures, checked by hand, and against data for several other large
+        companies. The worked examples on the Learn pages use that same Apple model.
       </p>
 
       <h2>Starting assumptions</h2>
