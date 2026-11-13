@@ -18,12 +18,15 @@ export function Menu({
   canExport = true,
   scenario = "base",
   optionModel,
+  onSnapshot,
 }: {
   inputs?: DcfInputs;
   canExport?: boolean;
   scenario?: ScenarioId;
   /** Set on the options page: share and download the option instead of a DCF. */
   optionModel?: OptionModel | null;
+  /** Builds and downloads the one-page company snapshot (DCF page only). */
+  onSnapshot?: () => Promise<void>;
 }) {
   const onOptions = optionModel !== undefined;
   // "closing" keeps the panel on screen while its exit animation plays
@@ -121,6 +124,19 @@ export function Menu({
     }
   };
 
+  const snapshot = async () => {
+    if (!onSnapshot) return;
+    close();
+    setStatus("Building snapshot");
+    try {
+      await onSnapshot();
+      setStatus("Snapshot downloaded");
+    } catch (e) {
+      console.error(e);
+      setStatus("Couldn't build the snapshot");
+    }
+  };
+
   const item = (href: string, text: string) => (
     <Link href={href} role="menuitem" className="menu-item" onClick={() => close()}>
       {text}
@@ -161,6 +177,11 @@ export function Menu({
             <button role="menuitem" className="menu-item" onClick={download} disabled={!available}>
               Download in Excel
             </button>
+            {!onOptions && (
+              <button role="menuitem" className="menu-item" onClick={snapshot} disabled={!available || !onSnapshot}>
+                Download snapshot (PDF)
+              </button>
+            )}
           </div>
           <div className="menu-group">
             <div className="menu-label">Learn</div>

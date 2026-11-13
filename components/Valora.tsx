@@ -311,7 +311,16 @@ export default function Valora() {
           ) : (
             <span />
           )}
-          <Menu inputs={hasModel ? inputs : undefined} canExport={hasModel && ready} scenario={scenario} />
+          <Menu
+            inputs={hasModel ? inputs : undefined}
+            canExport={hasModel && ready}
+            scenario={scenario}
+            onSnapshot={
+              hasModel && ready && inputs.company.ticker
+                ? async () => (await import("./snapshot/download")).downloadSnapshot(inputs, market, rf)
+                : undefined
+            }
+          />
         </div>
         {!home && (
           <nav className="stages" aria-label="Stages">

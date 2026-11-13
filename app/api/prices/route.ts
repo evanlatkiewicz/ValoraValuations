@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { computeBeta, isLogoUrl, range52, type Bar, type MarketData } from "@/lib/market";
+import { computeBeta, isLogoUrl, range52, type Bar, type DayQuote, type MarketData } from "@/lib/market";
 
 // Daily prices from Twelve Data. One request per ticker (cached for hours),
 // plus one shared request for the S&P 500 ETF used to calculate beta.
@@ -14,7 +14,38 @@ class PriceError extends Error {
   }
 }
 
+type Raw = { datetime: string; open: string; high: string; low: string; close: string; volume?: string };
+
 async function daily(symbol: string, key: string, size: number, revalidate: number): Promise<Bar[]> {
+  return toBars(await series(symbol, key, size, revalidate));
+}
+
+function toBars(values: Raw[]): Bar[] {
+  return values
+    .map((v) => ({ d: v.datetime.slice(0, 10), c: Number(v.close) }))
+    .filter((b) => Number.isFinite(b.c) && b.c > 0)
+    .reverse(); // oldest first
+}
+
+/** Open, high, low, volume and 30-day average volume for the latest day. Values are newest first. */
+function dayQuote(values: Raw[]): DayQuote | undefined {
+  const [t, y] = values;
+  if (!t) return undefined;
+  const vols = values.slice(0, 30).map((v) => Number(v.volume)).filter((x) => Number.isFinite(x) && x > 0);
+  const n = (x: string | undefined) => (Number.isFinite(Number(x)) ? Number(x) : NaN);
+  return {
+    date: t.datetime.slice(0, 10),
+    open: n(t.open),
+    high: n(t.high),
+    low: n(t.low),
+    close: n(t.close),
+    prevClose: y ? n(y.close) : null,
+    volume: Number.isFinite(Number(t.volume)) ? Number(t.volume) : null,
+    avgVolume: vols.length ? vols.reduce((a, b) => a + b, 0) / vols.length : null,
+  };
+}
+
+async function series(symbol: string, key: string, size: number, revalidate: number): Promise<Raw[]> {
   const url = `${BASE}?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=${size}&apikey=${key}`;
   const res = await fetch(url, { next: { revalidate } });
   const json = await res.json().catch(() => null);
@@ -24,11 +55,7 @@ async function daily(symbol: string, key: string, size: number, revalidate: numb
     if (code === 400 || code === 404) throw new PriceError(404, `No price data found for ${symbol}.`);
     throw new PriceError(502, "Couldn't reach the price data service right now.");
   }
-  const values = (json.values ?? []) as { datetime: string; close: string }[];
-  return values
-    .map((v) => ({ d: v.datetime.slice(0, 10), c: Number(v.close) }))
-    .filter((b) => Number.isFinite(b.c) && b.c > 0)
-    .reverse(); // oldest first
+  return (json.values ?? []) as Raw[];
 }
 
 async function logo(symbol: string, key: string): Promise<string | null> {
@@ -55,11 +82,12 @@ export async function GET(req: Request) {
   const symbol = raw.replace("-", "."); // BRK-B -> BRK.B
 
   try {
-    const [bars, spy, logoUrl] = await Promise.all([
-      daily(symbol, key, 1300, 6 * 3600),
+    const [values, spy, logoUrl] = await Promise.all([
+      series(symbol, key, 1300, 6 * 3600),
       daily(MARKET_PROXY, key, 600, 12 * 3600).catch(() => [] as Bar[]),
       logo(symbol, key),
     ]);
+    const bars = toBars(values);
     if (bars.length < 5) throw new PriceError(404, `No price data found for ${raw}.`);
     const { high, low } = range52(bars);
     const data: MarketData = {
@@ -71,6 +99,7 @@ export async function GET(req: Request) {
       beta: spy.length ? computeBeta(bars, spy) : null,
       logo: logoUrl,
       source: "Twelve Data",
+      quote: dayQuote(values),
     };
     return NextResponse.json(data, {
       headers: { "Cache-Control": "public, s-maxage=21600, stale-while-revalidate=43200" },

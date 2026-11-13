@@ -13,6 +13,18 @@ export interface Beta {
   r2: number;
 }
 
+/** The latest trading day, like a brokerage app's stats panel. */
+export interface DayQuote {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  prevClose: number | null;
+  volume: number | null;
+  avgVolume: number | null; // 30 trading days
+}
+
 export interface MarketData {
   ticker: string;
   bars: Bar[]; // oldest first, daily closes
@@ -22,6 +34,7 @@ export interface MarketData {
   beta: Beta | null;
   logo: string | null;
   source: string;
+  quote?: DayQuote; // absent in responses cached before it existed
 }
 
 /** Only logos from the data provider are trusted (they're drawn on the server too). */
