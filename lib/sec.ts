@@ -71,6 +71,21 @@ const C = {
     "RevenueFromContractWithCustomerIncludingAssessedTax",
     "SalesRevenueNet",
   ],
+  // Industry-specific totals, used only when none of the labels above is current
+  revenueAlt: [
+    "RevenuesNetOfInterestExpense", // brokers and asset managers
+    "RegulatedAndUnregulatedOperatingRevenue", // utilities
+    "ElectricUtilityRevenue",
+    "OperatingLeasesIncomeStatementLeaseRevenue", // REITs
+    "RealEstateRevenueNet",
+    "HealthCareOrganizationRevenue",
+    "OilAndGasRevenue",
+    "RevenueMineralSales",
+    "SalesRevenueGoodsNet",
+    "SalesRevenueServicesNet",
+  ],
+  // Spending that shows a company is operating, used to explain a missing revenue line
+  opex: ["OperatingExpenses", "ResearchAndDevelopmentExpense", "CostsAndExpenses"],
   ebit: ["OperatingIncomeLoss"],
   da: [
     "DepreciationDepletionAndAmortization",
@@ -200,7 +215,7 @@ function sumAt(f: CompanyFacts, parts: string[], date: string, kind: "annual" | 
  */
 export function reportingBook(f: CompanyFacts): Book | null {
   let best: { book: Book; end: string; n: number } | null = null;
-  const revenue: [Taxonomy, string[]][] = [["us-gaap", C.revenue], ["ifrs-full", I.revenue]];
+  const revenue: [Taxonomy, string[]][] = [["us-gaap", [...C.revenue, ...C.revenueAlt]], ["ifrs-full", I.revenue]];
   for (const [tax, concepts] of revenue) {
     for (const c of concepts) {
       for (const [unit, facts] of Object.entries(f.facts[tax]?.[c]?.units ?? {})) {
@@ -258,6 +273,24 @@ function shares(f: CompanyFacts, baseEnd: string, book: Book): { value: number; 
   return null;
 }
 
+/** Why a company with no usable revenue line can't be loaded, in plain English. */
+function noRevenueReason(f: CompanyFacts, ticker: string): string {
+  const name = tidyName(f.entityName, ticker);
+  const anyAnnual = (tax: Taxonomy | "dei") =>
+    Object.values(f.facts[tax] ?? {}).some((c) => Object.values(c.units).some((xs) => xs.some((e) => ANNUAL_FORMS.has(e.form ?? ""))));
+  if (!anyAnnual("us-gaap") && !anyAnnual("ifrs-full")) {
+    return `${name} hasn't filed an annual report (10-K or 20-F) with financial data yet, which is usual for a recent IPO. Valora needs at least one full year of results. Try again after its first annual report, or start from a blank model.`;
+  }
+  const spends = [...C.ebit, ...C.opex].some((c) => {
+    for (const xs of Object.values(f.facts["us-gaap"]?.[c]?.units ?? {})) if (annual(xs).size) return true;
+    return false;
+  });
+  if (spends) {
+    return `${name} hasn't reported any revenue yet. It's still developing its products, which is common for early-stage biotech and other pre-revenue companies. A DCF projects future cash flows from today's sales, so there's nothing to start from. Try a company with sales, or start from a blank model with your own forecast.`;
+  }
+  return `${name} doesn't report revenue under any of the standard labels Valora reads, so it can't be loaded automatically. You can still start from a blank model and enter the numbers from its annual report.`;
+}
+
 /** "MICROSOFT CORP" -> "Microsoft Corp". Mixed-case names are left alone. */
 export function tidyName(raw: string, ticker = ""): string {
   // SEC names sometimes end in filing tags like " /NEW", " /DE/" or " \DE\".
@@ -287,7 +320,7 @@ const round = (x: number, step = 0.005) => Number((Math.round(x / step) * step).
 export function inputsFromFacts(f: CompanyFacts, ticker: string, rf: RiskFree = FALLBACK_RF, fx?: Fx | null): LoadResult {
   const warnings: string[] = [];
   const book = reportingBook(f);
-  if (!book) throw new SecDataError(`${tidyName(f.entityName, ticker)} doesn't report revenue in a standard way, so it can't be loaded automatically.`);
+  if (!book) throw new SecDataError(noRevenueReason(f, ticker));
   const ifrs = book.tax === "ifrs-full";
   const K = ifrs ? I : C;
   const form = book.form;
@@ -306,12 +339,17 @@ export function inputsFromFacts(f: CompanyFacts, ticker: string, rf: RiskFree = 
     return v === null ? null : v * k;
   };
 
-  const rev = pick(f, K.revenue, "annual", book);
   const ebitSeries = pick(f, K.ebit, "annual", book);
-  if (!rev) throw new SecDataError(`${tidyName(f.entityName, ticker)} doesn't report revenue in a standard way, so it can't be loaded automatically.`);
+  let rev = pick(f, K.revenue, "annual", book);
+  // Fall back to industry-specific revenue labels when the usual ones are missing or out of date
+  if (!ifrs && (!rev || (ebitSeries && latestKey(ebitSeries.series) > latestKey(rev.series)))) {
+    const alt = pick(f, C.revenueAlt, "annual", book);
+    if (alt && (!rev || latestKey(alt.series) > latestKey(rev.series))) rev = alt;
+  }
+  if (!rev) throw new SecDataError(noRevenueReason(f, ticker));
   if (!ebitSeries || !ebitSeries.series.has(latestKey(rev.series))) {
     throw new SecDataError(
-      `${tidyName(f.entityName, ticker)} doesn't report operating income. That's normal for banks and insurers, which are valued with different models than a standard DCF. Try an operating company instead.`,
+      `${tidyName(f.entityName, ticker)} doesn't report operating income. That's normal for banks, insurers and real estate trusts (REITs), which analysts value with other methods, like dividends, book value or funds from operations. Try a company that sells products or services.`,
     );
   }
 

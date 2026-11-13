@@ -112,3 +112,40 @@ describe("foreign filers (20-F)", () => {
     expect(tidyName("ARM HOLDINGS PLC /UK", "ARM")).toBe("ARM Holdings PLC");
   });
 });
+
+describe("companies Valora can't value", () => {
+  const facts = (gaap: Record<string, { start?: string; end: string; val: number }[]>) =>
+    ({
+      cik: 1,
+      entityName: "TEST BIO INC",
+      facts: {
+        "us-gaap": Object.fromEntries(
+          Object.entries(gaap).map(([k, xs]) => [k, { units: { USD: xs.map((x) => ({ ...x, accn: "a", form: "10-K", filed: "2026-03-01" })) } }]),
+        ),
+      },
+    }) as CompanyFacts;
+
+  it("explains a pre-revenue company", () => {
+    const f = facts({ OperatingIncomeLoss: [{ start: "2025-01-01", end: "2025-12-31", val: -1.2e8 }] });
+    expect(() => inputsFromFacts(f, "TBIO")).toThrow(/hasn't reported any revenue yet/);
+  });
+
+  it("explains a company with no annual report yet", () => {
+    const f = { cik: 1, entityName: "NEW CO", facts: { "us-gaap": {} } } as CompanyFacts;
+    expect(() => inputsFromFacts(f, "NEW")).toThrow(/hasn't filed an annual report/);
+  });
+
+  it("reads industry revenue labels when the usual ones are missing", () => {
+    const f = facts({
+      RegulatedAndUnregulatedOperatingRevenue: [
+        { start: "2024-01-01", end: "2024-12-31", val: 2e10 },
+        { start: "2025-01-01", end: "2025-12-31", val: 2.2e10 },
+      ],
+      OperatingIncomeLoss: [
+        { start: "2024-01-01", end: "2024-12-31", val: 5e9 },
+        { start: "2025-01-01", end: "2025-12-31", val: 6e9 },
+      ],
+    });
+    expect(inputsFromFacts(f, "UTIL").inputs.history.at(-1)!.revenue).toBe(22000);
+  });
+});
