@@ -11,12 +11,12 @@ export interface RiskFree {
 export const FALLBACK_RF: RiskFree = { rate: MARKET.riskFreeRate, date: null, source: "Valora default", live: false };
 
 /** Latest valid observation from a FRED observations response. FRED marks holidays with ".". */
-export function latestObservation(json: unknown): { date: string; value: number } | null {
+export function latestObservation(json: unknown, max = 30): { date: string; value: number } | null {
   const obs = (json as { observations?: { date: string; value: string }[] })?.observations;
   if (!Array.isArray(obs)) return null;
   const valid = obs
     .map((o) => ({ date: o.date, value: Number(o.value) }))
-    .filter((o) => /^\d{4}-\d{2}-\d{2}$/.test(o.date) && Number.isFinite(o.value) && o.value > -5 && o.value < 30)
+    .filter((o) => /^\d{4}-\d{2}-\d{2}$/.test(o.date) && Number.isFinite(o.value) && o.value > -5 && o.value < max)
     .sort((a, b) => (a.date < b.date ? 1 : -1));
   return valid[0] ?? null;
 }

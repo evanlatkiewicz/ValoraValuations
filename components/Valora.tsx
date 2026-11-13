@@ -220,7 +220,7 @@ export default function Valora() {
     const t = raw.trim().toUpperCase();
     if (!t || loading) return;
     setTicker(t);
-    setLoading(`Reading ${t}'s 10-K`);
+    setLoading(`Reading ${t}'s annual report`);
     setNotice(null);
     try {
       const res = await fetch(`/api/company?ticker=${encodeURIComponent(t)}`);
@@ -247,7 +247,7 @@ export default function Valora() {
         tone: "info",
         text: m
           ? `Loaded ${loaded.company.name} from its ${loaded.company.baseYearLabel} 10-K, with the latest share price${m.beta ? " and a beta calculated from two years of prices" : ""}. Growth and margins start from the company's recent history, so treat them as a first draft.`
-          : `Loaded ${loaded.company.name} from its ${loaded.company.baseYearLabel} 10-K. Growth and margins start from the company's recent history, so treat them as a first draft. Add today's share price in the Balance sheet step to see a value.`,
+          : `Loaded ${loaded.company.name} from its ${loaded.company.baseYearLabel} ${loaded.company.form ?? "10-K"}. Growth and margins start from the company's recent history, so treat them as a first draft. Add today's share price in the Balance sheet step to see a value.`,
         warnings: data.warnings,
       });
     } catch {

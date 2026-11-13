@@ -7,7 +7,7 @@ type Props = { searchParams: Promise<Record<string, string | string[] | undefine
 
 const DEFAULT_TITLE = "Company valuation (DCF) | Valora";
 const DEFAULT_DESC =
-  "Value any US company from its 10-K with a guided discounted cash flow model. Live prices, bull, base and bear cases, and sanity checks on every assumption.";
+  "Value any US-listed company from its 10-K or 20-F with a guided discounted cash flow model. Live prices, bull, base and bear cases, and sanity checks on every assumption.";
 
 // Shared links (/?m=...) get their own title and preview card.
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {

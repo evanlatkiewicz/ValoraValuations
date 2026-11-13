@@ -497,7 +497,7 @@ function BalanceSheet({ ctx }: { ctx: Ctx }) {
         />
         <Field
           label="Shares outstanding"
-          help="In millions. From the cover of the 10-K or the balance sheet."
+          help="In millions. From the cover of the annual report or the balance sheet. For a foreign company, count US-listed shares (ADRs), not ordinary shares."
           input={<NumInput kind="shares" label="Shares outstanding" value={i.sharesOutstanding} onChange={(n) => set("sharesOutstanding", n)} />}
           notes={<Notes ctx={ctx} id="sharesOutstanding" />}
         />

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { inputsFromFacts, fiscalLabel, SecDataError, tidyName, type CompanyFacts } from "./sec";
+import { inputsFromFacts, fiscalLabel, reportingBook, SecDataError, tidyName, type CompanyFacts } from "./sec";
 import { APPLE } from "./companies";
 import { runDcf } from "./dcf";
 
@@ -60,5 +60,55 @@ describe("company names", () => {
     expect(tidyName("MICROSOFT CORP")).toBe("Microsoft Corp");
     expect(tidyName("EXAMPLE HOLDINGS INC /DE/")).toBe("Example Holdings Inc");
     expect(tidyName("Apple Inc.")).toBe("Apple Inc.");
+  });
+});
+
+describe("foreign filers (20-F)", () => {
+  const fx = (currency: string, rate: number) => ({ currency, rate, date: "2026-11-12", source: "test" });
+
+  it("reads US GAAP in euros and converts to dollars (ASML)", () => {
+    const f = load("ASML");
+    expect(reportingBook(f)).toEqual({ tax: "us-gaap", unit: "EUR", form: "20-F" });
+    const eur = inputsFromFacts(f, "ASML", undefined, fx("EUR", 1)).inputs;
+    const usd = inputsFromFacts(f, "ASML", undefined, fx("EUR", 1.2)).inputs;
+    expect(usd.history.at(-1)!.revenue).toBeCloseTo(eur.history.at(-1)!.revenue * 1.2, 6);
+    expect(usd.cash).toBeCloseTo(eur.cash * 1.2, 6);
+    expect(usd.ebitMargin).toEqual(eur.ebitMargin); // ratios don't move with the rate
+    expect(usd.company.name).toBe("ASML Holding NV");
+    expect(usd.sources.history.note).toMatch(/20-F.*euros/);
+  });
+
+  it("needs an exchange rate for non-dollar reporters", () => {
+    expect(() => inputsFromFacts(load("ASML"), "ASML")).toThrow(/euros/);
+  });
+
+  it("reads a dollar 20-F with a March year end (ARM)", () => {
+    const { inputs } = inputsFromFacts(load("ARM"), "ARM");
+    expect(inputs.company.baseYearLabel).toBe("FY2026");
+    expect(inputs.history.at(-1)!.revenue).toBeGreaterThan(4000);
+  });
+
+  it.each([["TSM", "TWD", 1 / 30], ["NVO", "DKK", 0.15]])("reads IFRS filings (%s)", (t, cur, rate) => {
+    const f = load(t);
+    expect(reportingBook(f)).toMatchObject({ tax: "ifrs-full", unit: cur });
+    const { inputs, warnings } = inputsFromFacts(f, t, undefined, fx(cur, rate));
+    const base = inputs.history.at(-1)!;
+    for (const k of ["revenue", "ebit", "da", "capex"] as const) expect(base[k]).toBeGreaterThan(0);
+    expect(inputs.debt).toBeGreaterThan(0);
+    expect(inputs.sharesOutstanding).toBeGreaterThan(1000);
+    expect(warnings.join(" ")).toMatch(/converted to US dollars/);
+    const r = runDcf({ ...inputs, sharePrice: 100 });
+    expect(r.impliedPrice).toBeGreaterThan(0);
+  });
+
+  it("counts shares per ADR (TSMC: one ADR is five shares)", () => {
+    const { inputs } = inputsFromFacts(load("TSM"), "TSM", undefined, fx("TWD", 1 / 30));
+    expect(inputs.sharesOutstanding).toBeCloseTo(25932.9 / 5, 0);
+    expect(inputs.sources.sharesOutstanding.note).toMatch(/divided by 5/);
+  });
+
+  it("keeps A/S in Novo Nordisk's name", () => {
+    expect(tidyName("NOVO NORDISK A/S")).toBe("Novo Nordisk A/S");
+    expect(tidyName("ARM HOLDINGS PLC /UK", "ARM")).toBe("ARM Holdings PLC");
   });
 });

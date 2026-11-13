@@ -21,7 +21,7 @@ export default function Page() {
       <h2>Where the data comes from</h2>
       <p>
         When you load a ticker, Valora pulls the company&rsquo;s reported figures from SEC EDGAR, the SEC&rsquo;s free database of the
-        structured data companies tag in their 10-K filings. It takes the last three fiscal years of revenue, operating income, D&amp;A and
+        structured data companies tag in their annual reports: 10-Ks for US companies, and 20-Fs or 40-Fs for foreign ones. It takes the last three fiscal years of revenue, operating income, D&amp;A and
         capex, plus the base year balance sheet: cash, marketable securities, debt, current assets, current liabilities and shares
         outstanding. Every figure taken from a filing is tagged &ldquo;From filing&rdquo; with a link to the filing itself.
       </p>
@@ -29,6 +29,13 @@ export default function Page() {
         Companies don&rsquo;t always label the same line item the same way, and sometimes switch labels between years. Valora checks several
         standard labels for each item and uses whichever has the most recent data. When something can&rsquo;t be found, Valora tells you
         what to enter rather than guessing.
+      </p>
+      <p>
+        Foreign companies like ASML, Arm and TSMC file a 20-F instead of a 10-K. Many of them use IFRS, the international accounting
+        standards, so Valora reads those labels too. When a company reports in another currency, every amount is converted to US dollars at
+        the latest exchange rate, so it lines up with the US share price. Margins and growth rates don&rsquo;t change with the conversion.
+        Some US-listed foreign shares (ADRs) stand for more than one ordinary share, and Valora adjusts the share count for the common
+        ones. One TSMC ADR, for example, is five shares.
       </p>
       <p>
         Banks and insurers don&rsquo;t report operating income the way other companies do, and a standard DCF doesn&rsquo;t fit them, so

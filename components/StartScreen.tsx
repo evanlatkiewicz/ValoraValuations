@@ -13,11 +13,11 @@ export interface StartCopy {
 
 export const DCF_COPY: StartCopy = {
   title: "Let\u2019s get started.",
-  lede: "Enter a ticker or start typing a company name. Valora pulls the company\u2019s last three years from its 10-K, adds today\u2019s share price, and walks you through valuing it.",
+  lede: "Enter a ticker or start typing a company name. Valora pulls the company\u2019s last three years from its annual report (a 10-K, or a 20-F for foreign companies), adds today\u2019s share price, and walks you through valuing it.",
   button: "Value this company",
   picks: ["AAPL", "MSFT", "NVDA", "COST", "KO", "NKE"],
   steps: [
-    ["Inputs", "Check the numbers pulled from the 10-K and set your assumptions, one step at a time."],
+    ["Inputs", "Check the numbers pulled from the filing and set your assumptions, one step at a time."],
     ["Model", "See every line of the DCF compiled, and click any number to see its formula."],
     ["Valuation", "Get a value per share with bull, base and bear cases, sensitivity tables and sanity checks."],
   ],

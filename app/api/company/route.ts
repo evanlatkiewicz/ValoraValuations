@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { inputsFromFacts, SecDataError, trimFacts, type CompanyFacts } from "@/lib/sec";
+import { currencyName, inputsFromFacts, reportingBook, SecDataError, tidyName, trimFacts, type CompanyFacts } from "@/lib/sec";
+import { fetchFx } from "@/lib/fx";
 import { fetchRiskFree } from "@/lib/rates";
 import { secUserAgent as userAgent, tickerMap } from "@/lib/secFetch";
 
@@ -14,7 +15,7 @@ export async function GET(req: Request) {
 
   try {
     const entry = (await tickerMap(ua)).get(ticker);
-    if (!entry) return fail(404, `No SEC filer found for ${ticker}. Valora works with US-listed companies that file 10-Ks.`);
+    if (!entry) return fail(404, `No SEC filer found for ${ticker}. Valora works with companies that file annual reports (10-K, 20-F or 40-F) with the SEC.`);
 
     const cik = String(entry.cik_str).padStart(10, "0");
     const res = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`, {
@@ -26,7 +27,12 @@ export async function GET(req: Request) {
 
     const [json, rf] = await Promise.all([res.json(), fetchRiskFree()]);
     const facts = trimFacts(json as CompanyFacts);
-    const result = inputsFromFacts(facts, ticker, rf);
+    const book = reportingBook(facts);
+    const fx = book && book.unit !== "USD" ? await fetchFx(book.unit) : null;
+    if (book && book.unit !== "USD" && !fx) {
+      return fail(502, `${tidyName(facts.entityName, ticker)} reports in ${currencyName(book.unit)}, and the exchange rate to US dollars couldn't be loaded. Try again in a minute.`);
+    }
+    const result = inputsFromFacts(facts, ticker, rf, fx);
     return NextResponse.json(result, {
       headers: { "Cache-Control": "public, s-maxage=21600, stale-while-revalidate=86400" },
     });

@@ -121,7 +121,7 @@ export async function GET(req: Request) {
               Valuation tools for students, built on live market data.
             </div>
             <div style={{ fontSize: 30, color: SOFT, maxWidth: 940, lineHeight: 1.35 }}>
-              Value companies from their 10-Ks and price options with Black-Scholes, one assumption at a time.
+              Value companies from their SEC filings and price options with Black-Scholes, one assumption at a time.
             </div>
           </div>
           <Footer host={host} note="Free to use, no sign-up" />
@@ -133,7 +133,7 @@ export async function GET(req: Request) {
 
   const logo = await logoData(card.logo);
   const upside = card.value / card.price - 1;
-  const meta = [card.ticker, card.year ? `${card.year} 10-K` : ""].filter(Boolean).join("   ");
+  const meta = [card.ticker, card.year ? `${card.year} filing` : ""].filter(Boolean).join("   ");
   const initial = (card.name.trim()[0] ?? "?").toUpperCase();
 
   return new ImageResponse(

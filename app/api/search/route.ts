@@ -14,7 +14,7 @@ export async function GET(req: Request) {
   try {
     if (!listCache) {
       const map = await tickerMap(ua);
-      listCache = [...map.values()].map((e) => ({ ticker: e.ticker.toUpperCase(), name: tidyName(e.title) }));
+      listCache = [...map.values()].map((e) => ({ ticker: e.ticker.toUpperCase(), name: tidyName(e.title, e.ticker) }));
     }
     return NextResponse.json(
       { results: rankCompanies(listCache, q) },

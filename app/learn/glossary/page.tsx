@@ -8,6 +8,8 @@ export const metadata: Metadata = {
 
 const TERMS: [string, string][] = [
   ["10-K and 10-Q", "The annual (10-K) and quarterly (10-Q) reports US public companies file with the SEC. The financial statements in them are where a DCF's historical numbers come from."],
+  ["20-F and 40-F", "The annual reports foreign companies listed in the US file with the SEC instead of a 10-K. Canadian companies file a 40-F. Many use IFRS, the international accounting standards, and report in their home currency."],
+  ["ADR (American depositary receipt)", "A US-listed share that stands for shares of a foreign company held by a bank. One ADR can represent several ordinary shares: one TSMC ADR is five Taiwan-listed shares. Valora counts shares in ADRs so the value per share lines up with the US price."],
   ["Base year", "The most recent full fiscal year of actual results. Every projection in the model grows out of it."],
   ["Beta", "How much a stock tends to move when the overall market moves. A beta of 1.0 moves with the market; 1.5 moves about 50% more. Used to estimate the cost of equity."],
   ["Capital expenditures (capex)", "Cash spent on long-term assets like buildings, equipment and data centers. Found on the cash flow statement, usually as \"payments for acquisition of property, plant and equipment.\""],

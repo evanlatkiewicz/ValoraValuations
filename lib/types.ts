@@ -26,6 +26,8 @@ export interface DcfInputs {
     baseYearLabel: string; // last actual fiscal year, e.g. "FY2026"
     priceDate: string; // when the share price was taken
     logo?: string; // company logo URL (Twelve Data)
+    form?: string; // annual report the data came from: "10-K", "20-F" or "40-F"
+    currency?: string; // reporting currency, when amounts were converted to USD
   };
   history: HistoricalYear[]; // oldest first; last entry is the base year
   baseNwc: number; // operating net working capital at end of base year

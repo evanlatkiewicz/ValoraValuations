@@ -44,7 +44,7 @@ export function CompanyBar({
           <h2 className="co-name">{c.name}</h2>
           <div className="co-meta">
             {c.ticker && <span className="co-ticker">{c.ticker}</span>}
-            <span>Base year {c.baseYearLabel}{filing ? ", " : ""}{filing && <a href={filing} target="_blank" rel="noreferrer">10-K filing</a>}</span>
+            <span>Base year {c.baseYearLabel}{filing ? ", " : ""}{filing && <a href={filing} target="_blank" rel="noreferrer">{c.form ?? "10-K"} filing</a>}{c.currency ? `, converted from ${c.currency}` : ""}</span>
           </div>
         </div>
         <div className="case-switch" role="group" aria-label="Scenario">
