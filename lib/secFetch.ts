@@ -23,7 +23,10 @@ export async function tickerMap(ua: string): Promise<Map<string, TickerEntry>> {
   });
   if (!res.ok) throw new Error(`SEC ticker list returned ${res.status}`);
   const json = (await res.json()) as Record<string, TickerEntry>;
-  const map = new Map(Object.values(json).map((e) => [e.ticker.toUpperCase(), e]));
+  // A few tickers appear more than once (a parent and a financing subsidiary).
+  // The SEC lists the main company first, so keep the first entry.
+  const map = new Map<string, TickerEntry>();
+  for (const e of Object.values(json)) if (!map.has(e.ticker.toUpperCase())) map.set(e.ticker.toUpperCase(), e);
   tickerCache = { at: Date.now(), map };
   return map;
 }
