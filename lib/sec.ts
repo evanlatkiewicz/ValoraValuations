@@ -316,7 +316,7 @@ export function inputsFromFacts(f: CompanyFacts, ticker: string, rf: RiskFree = 
   const ends = [...rev.series.keys()].sort().slice(-3);
   const baseEnd = ends.at(-1)!;
   if (days(baseEnd, new Date().toISOString().slice(0, 10)) > 600) {
-    warnings.push(`The latest annual data is for the year ending ${baseEnd}. The company may not have filed its newest ${form} in a form Valora can read yet.`);
+    warnings.push(`The latest annual numbers in the SEC's structured data are for the year ending ${baseEnd}. If the company has filed a newer ${form}, update the history and balance sheet from it.`);
   }
   const baseFact = rev.series.get(baseEnd)!;
   const url = filingUrl(f.cik, baseFact.accn);

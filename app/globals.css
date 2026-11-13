@@ -305,6 +305,8 @@ h1, h2, h3, p { margin: 0; }
 @media (max-width: 1180px) {
   .bench { grid-template-columns: 190px minmax(0, 1fr); }
   .bench > .live { grid-column: 1 / -1; position: static; }
+  /* The live panel drops below, so a sticky step list would slide over it. */
+  .rail { position: static; }
   .bench.wide { grid-template-columns: minmax(0, 1fr); }
   .blocks { grid-template-columns: 1fr 1fr; }
 }
