@@ -682,3 +682,20 @@ a.inst:hover .inst-go { background: var(--green); border-color: var(--green); }
 .comps tr.is-median td { border-top: 1.5px solid var(--ink); font-weight: 700; }
 .comps tr.is-model td { font-weight: 700; color: var(--green); }
 .comps-year { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-faint); margin-left: 4px; }
+
+/* ---------- Accounts ---------- */
+.login-form { margin-top: 18px; max-width: 560px; }
+.login-form label { display: block; font-weight: 700; margin-bottom: 6px; }
+.login-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.login-row .text-input { flex: 1; min-width: 220px; height: 38px; }
+.login-error { color: var(--red); margin-top: 10px; font-size: var(--step--1); }
+.saved-list { list-style: none; padding: 0; margin: 20px 0 0; border-top: 1.5px solid var(--ink); }
+.saved-item { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--rule); flex-wrap: wrap; }
+.saved-title { display: flex; align-items: center; gap: 8px; font-weight: 700; flex-wrap: wrap; }
+.saved-meta { display: flex; gap: 6px 14px; flex-wrap: wrap; font-size: var(--step--1); color: var(--ink-soft); margin-top: 4px; }
+.saved-kind { font-size: 0.7rem; font-weight: 700; border: 1.5px solid var(--ink); border-radius: 3px; padding: 0 6px; }
+.saved-kind.option { border-color: var(--put); color: var(--put); }
+.saved-actions { display: flex; gap: 10px; align-items: center; }
+.prose .saved-list { list-style: none; padding-left: 0; }
+.prose .saved-list li { margin: 0; }
+.prose a.btn { color: var(--sheet); text-decoration: none; }

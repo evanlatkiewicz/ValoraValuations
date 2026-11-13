@@ -8,6 +8,8 @@ import { loadSession } from "@/lib/session";
 import type { DcfInputs } from "@/lib/types";
 import type { ScenarioId } from "@/lib/scenarios";
 import type { OptionModel } from "@/lib/optionModel";
+import { accountsEnabled } from "@/lib/supabase";
+import { useUser } from "./useUser";
 
 /**
  * The site menu. On the builder it receives the live model; on the Learn and
@@ -41,6 +43,7 @@ export function Menu({
     setPhase("open");
   };
   const [status, setStatus] = useState<string | null>(null);
+  const { user } = useUser();
   const wrap = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
 
@@ -124,6 +127,46 @@ export function Menu({
     }
   };
 
+  const save = async () => {
+    close();
+    if (!user) {
+      // The model is kept in this tab, so it's still here after signing in.
+      window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+      return;
+    }
+    setStatus("Saving");
+    try {
+      const { saveModel } = await import("@/lib/supabase");
+      if (onOptions) {
+        if (!optionModel) return;
+        const [{ encodeOption }, { runOption }] = await Promise.all([import("@/lib/optionShare"), import("@/lib/optionModel")]);
+        const r = runOption(optionModel);
+        await saveModel({
+          kind: "option",
+          ticker: optionModel.ticker,
+          name: optionModel.name.slice(0, 120),
+          token: await encodeOption(optionModel),
+          summary: { type: optionModel.type, strike: optionModel.K, expiry: optionModel.expiry, call: r.result.call, putPrice: r.result.put, price: optionModel.S },
+        });
+      } else {
+        const m = model();
+        if (!m) return;
+        const [{ encodeCompact }, { runDcf }, { caseInputs }] = await Promise.all([import("@/lib/share"), import("@/lib/dcf"), import("@/lib/scenarios")]);
+        await saveModel({
+          kind: "dcf",
+          ticker: m.company.ticker || "N/A",
+          name: (m.company.name || m.company.ticker || "Untitled").slice(0, 120),
+          token: await encodeCompact(m),
+          summary: { value: runDcf(caseInputs(m, "base")).impliedPrice, price: m.sharePrice, year: m.company.baseYearLabel },
+        });
+      }
+      setStatus("Saved to your account");
+    } catch (e) {
+      console.error(e);
+      setStatus("Couldn't save. Try again.");
+    }
+  };
+
   const snapshot = async () => {
     if (!onSnapshot) return;
     close();
@@ -182,6 +225,11 @@ export function Menu({
                 Download snapshot (PDF)
               </button>
             )}
+            {accountsEnabled && (
+              <button role="menuitem" className="menu-item" onClick={save} disabled={!available || (!onOptions && !inputs)}>
+                Save to my account
+              </button>
+            )}
           </div>
           <div className="menu-group">
             <div className="menu-label">Learn</div>
@@ -190,6 +238,12 @@ export function Menu({
             {item("/learn/glossary", "Glossary")}
             {item("/learn/interview-questions", "Common interview questions")}
           </div>
+          {accountsEnabled && (
+            <div className="menu-group">
+              <div className="menu-label">Account</div>
+              {user ? item("/account", "My saved models") : item("/login", "Sign in")}
+            </div>
+          )}
           <div className="menu-group">
             <div className="menu-label">About</div>
             {item("/about", "How Valora works")}
