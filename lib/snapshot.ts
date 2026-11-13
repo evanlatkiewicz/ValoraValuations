@@ -128,30 +128,7 @@ export function buildSnapshot(src: SnapshotSources): SnapshotData {
     };
   }
 
-  // A standard at-the-money option three months out, priced with historical volatility
-  let options: SnapshotData["options"] = null;
-  const hv = bars.length > 60 ? historicalVol(bars.map((x) => x.c)) : null;
-  if (hv && price > 0) {
-    const expiry = expiryIn(src.today, 3);
-    const days = Math.max(daysBetween(src.today, expiry), 1);
-    const T = days / 365;
-    const quoted = src.curve ? yieldAt(src.curve, T)?.rate ?? src.tenYear : src.tenYear;
-    const rate = continuousRate(quoted ?? 0.045);
-    const qy = src.dps && price > 0 ? src.dps / price : 0;
-    const K = roundStrike(price);
-    const bs = blackScholes({ S: price, K, T, r: rate, q: qy, sigma: hv.sigma });
-    options = {
-      expiry,
-      days,
-      strike: K,
-      call: bs.call,
-      put: bs.put,
-      vol: hv.sigma,
-      rate: quoted ?? 0.045,
-      expectedMove: price * hv.sigma * Math.sqrt(T),
-      earningsBefore: !!src.earnings && src.earnings.date >= src.today && src.earnings.date <= expiry,
-    };
-  }
+  const options = atmOptions({ price, bars, curve: src.curve, tenYear: src.tenYear, dps: src.dps, earnings: src.earnings, today: src.today });
 
   const rev = reverseDcf(base);
   return {
@@ -213,5 +190,37 @@ export function buildSnapshot(src: SnapshotSources): SnapshotData {
       .sort((x, y) => (x.level === "bad" ? -1 : 0) - (y.level === "bad" ? -1 : 0))
       .slice(0, 3)
       .map((c) => ({ title: c.title, message: c.message, level: c.level as "warn" | "bad" })),
+  };
+}
+
+/** A standard at-the-money option three months out, priced with historical volatility. */
+export function atmOptions(a: {
+  price: number;
+  bars: { d: string; c: number }[];
+  curve: Curve | null;
+  tenYear: number | null;
+  dps: number | null;
+  earnings: { date: string } | null;
+  today: string;
+}): SnapshotData["options"] {
+  const hv = a.bars.length > 60 ? historicalVol(a.bars.map((x) => x.c)) : null;
+  if (!hv || !(a.price > 0)) return null;
+  const expiry = expiryIn(a.today, 3);
+  const days = Math.max(daysBetween(a.today, expiry), 1);
+  const T = days / 365;
+  const quoted = a.curve ? yieldAt(a.curve, T)?.rate ?? a.tenYear : a.tenYear;
+  const rate = continuousRate(quoted ?? 0.045);
+  const K = roundStrike(a.price);
+  const bs = blackScholes({ S: a.price, K, T, r: rate, q: a.dps ? a.dps / a.price : 0, sigma: hv.sigma });
+  return {
+    expiry,
+    days,
+    strike: K,
+    call: bs.call,
+    put: bs.put,
+    vol: hv.sigma,
+    rate: quoted ?? 0.045,
+    expectedMove: a.price * hv.sigma * Math.sqrt(T),
+    earningsBefore: !!a.earnings && a.earnings.date >= a.today && a.earnings.date <= expiry,
   };
 }

@@ -6,13 +6,17 @@
 create table if not exists public.saved_models (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
-  kind text not null check (kind in ('dcf', 'option')),
+  kind text not null,
   ticker text not null check (length(ticker) <= 12),
   name text not null check (length(name) <= 120),
   token text not null check (length(token) <= 20000),
   summary jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
+
+-- Model types: company DCF, option, and the bank and insurer model
+alter table public.saved_models drop constraint if exists saved_models_kind_check;
+alter table public.saved_models add constraint saved_models_kind_check check (kind in ('dcf', 'option', 'fin'));
 
 create index if not exists saved_models_user_created on public.saved_models (user_id, created_at desc);
 

@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { logoUrlFor, readCard, readOptionCard, type OptionCard } from "@/lib/og";
+import { logoUrlFor, readCard, readFinCard, readOptionCard, type FinCard, type OptionCard } from "@/lib/og";
 
 // The preview image LinkedIn, Slack, iMessage and others show for a link.
 export const runtime = "nodejs";
@@ -109,6 +109,8 @@ export async function GET(req: Request) {
   const opts = { width: 1200, height: 630, fonts: await loadFonts() };
   const optCard = readOptionCard(url.searchParams);
   if (optCard) return new ImageResponse(<OptionImage card={optCard} logo={await logoData(optCard.logo)} host={host} />, opts);
+  const finCard = readFinCard(url.searchParams);
+  if (finCard) return new ImageResponse(<FinImage card={finCard} logo={await logoData(finCard.logo)} host={host} />, opts);
   const card = readCard(url.searchParams);
 
   if (!card) {
@@ -266,6 +268,73 @@ function OptionImage({ card, logo, host }: { card: OptionCard; logo: string | nu
         </div>
       </div>
       <Footer host={host} note="Black-Scholes option pricing. Open it and change any input." />
+    </div>
+  );
+}
+
+const KIND: Record<string, string> = { bank: "Bank", insurer: "Insurer", reit: "REIT", financial: "Financial company" };
+
+function FinImage({ card, logo, host }: { card: FinCard; logo: string | null; host: string }) {
+  const upside = card.value / card.price - 1;
+  const initial = (card.name.trim()[0] ?? "?").toUpperCase();
+  return (
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: PAPER, fontFamily: "Schibsted", color: INK }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "48px 64px 0" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 26 }}>
+          {logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logo} width={104} height={104} style={{ borderRadius: 22, border: `2px solid ${RULE}`, background: "#ffffff", padding: 12, objectFit: "contain" }} alt="" />
+          ) : (
+            <div style={{ width: 104, height: 104, borderRadius: 22, background: INK, color: SHEET, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 54, fontWeight: 800 }}>
+              {initial}
+            </div>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", maxWidth: 700 }}>
+            <div style={{ display: "flex", fontSize: 56, fontWeight: 800, letterSpacing: -2, lineHeight: 1.04 }}>{card.name}</div>
+            <div style={{ display: "flex", gap: 26, fontSize: 24, color: FAINT, fontFamily: "Plex Mono", marginTop: 8 }}>
+              <div style={{ display: "flex", color: INK }}>{card.ticker}</div>
+              <div style={{ display: "flex" }}>{KIND[card.kind] ?? "Financial company"}</div>
+              <div style={{ display: "flex" }}>{`${card.year} filing`}</div>
+            </div>
+          </div>
+        </div>
+        <Brand size={40} />
+      </div>
+
+      <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "space-between", padding: "0 64px", gap: 40 }}>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <div style={{ fontSize: 26, color: SOFT }}>Value per share</div>
+          <div style={{ fontSize: 124, fontFamily: "Plex Mono", letterSpacing: -6, lineHeight: 1.02 }}>{money(card.value)}</div>
+          <div style={{ display: "flex", gap: 12, marginTop: 14 }}>
+            {[
+              { k: "Book value", v: money(card.bookPerShare) },
+              { k: "Price to book", v: `${(card.value / card.bookPerShare).toFixed(2)}x` },
+            ].map((x) => (
+              <div key={x.k} style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "6px 14px", borderRadius: 6, border: `2px solid ${INK}`, background: SHEET }}>
+                <div style={{ fontSize: 19, color: SOFT, fontWeight: 800 }}>{x.k}</div>
+                <div style={{ fontSize: 22, fontFamily: "Plex Mono" }}>{x.v}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20, padding: "26px 32px", background: SHEET, border: `2.5px solid ${INK}`, borderRadius: 14, minWidth: 330 }}>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <div style={{ fontSize: 21, color: SOFT }}>Market price</div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
+              <div style={{ fontSize: 44, fontFamily: "Plex Mono", letterSpacing: -2 }}>{money(card.price)}</div>
+              <div style={{ fontSize: 26, fontFamily: "Plex Mono", color: upside < 0 ? RED : GREEN }}>
+                {`${upside > 0 ? "+" : upside < 0 ? "−" : ""}${Math.abs(upside * 100).toFixed(1)}%`}
+              </div>
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: `1.5px solid ${RULE}`, paddingTop: 18 }}>
+            <div style={{ fontSize: 21, color: SOFT }}>Model quality</div>
+            <Stars value={card.stars} />
+          </div>
+        </div>
+      </div>
+
+      <Footer host={host} note="Excess return model for financial companies. Open it and change any assumption." />
     </div>
   );
 }

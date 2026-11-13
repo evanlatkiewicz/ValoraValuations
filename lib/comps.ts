@@ -12,6 +12,7 @@ export interface PeerRow {
   evSales: number | null;
   evEbitda: number | null;
   pe: number | null;
+  pb?: number | null; // price to book, for banks and insurers
 }
 
 export function median(xs: (number | null)[]): number | null {

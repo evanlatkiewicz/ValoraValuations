@@ -6,6 +6,7 @@ import { fetchPeerList } from "./fmp";
 import { fetchFx } from "./fx";
 import { FALLBACK_RF } from "./rates";
 import { inputsFromFacts, netIncomeFromFacts, reportingBook, trimFacts, type CompanyFacts } from "./sec";
+import { equityFromFacts } from "./secFin";
 import { secUserAgent, tickerMap } from "./secFetch";
 
 async function facts(cik: number, ua: string): Promise<CompanyFacts | null> {
@@ -31,6 +32,12 @@ const FALLBACK: Record<string, string[]> = {
   META: ["GOOGL", "SNAP", "PINS", "MSFT", "AMZN"],
   AMZN: ["WMT", "COST", "MSFT", "GOOGL", "EBAY"],
   TSLA: ["GM", "F", "TM", "RIVN", "LCID"],
+  JPM: ["BAC", "WFC", "C", "GS", "MS"],
+  BAC: ["JPM", "WFC", "C", "USB", "PNC"],
+  WFC: ["JPM", "BAC", "C", "USB", "PNC"],
+  C: ["JPM", "BAC", "WFC", "GS", "MS"],
+  GS: ["MS", "JPM", "BAC", "C", "SCHW"],
+  MS: ["GS", "JPM", "SCHW", "BAC", "C"],
 };
 
 async function twelveDataPrices(symbols: string[]): Promise<Record<string, number>> {
@@ -111,7 +118,26 @@ export async function fetchPeers(ticker: string, want = 5): Promise<PeersResult 
           pe: ni && ni > 0 ? mcap / ni : null,
         };
       } catch {
-        return null; // banks and companies without operating income
+        // Banks, insurers and REITs: price to book and P/E from their equity and earnings
+        try {
+          const { inputs: e } = equityFromFacts(got.f, p.symbol, FALLBACK_RF, got.fx);
+          const b = e.history.at(-1)!;
+          const mcap = p.mktCap > 0 ? p.mktCap / 1e6 : (p.price ?? 0) * e.sharesOutstanding;
+          if (!(mcap > 0) || !(e.bookEquity > 0)) return null;
+          return {
+            symbol: p.symbol,
+            name: p.companyName || e.company.name,
+            year: b.label,
+            marketCap: mcap * 1e6,
+            ev: null,
+            evSales: null,
+            evEbitda: null,
+            pe: b.netIncome > 0 ? mcap / b.netIncome : null,
+            pb: mcap / e.bookEquity,
+          };
+        } catch {
+          return null;
+        }
       }
     }),
   ]);

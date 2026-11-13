@@ -17,7 +17,7 @@ export function supabase(): SupabaseClient | null {
   return client;
 }
 
-export type SavedKind = "dcf" | "option";
+export type SavedKind = "dcf" | "option" | "fin";
 
 export interface SavedModel {
   id: string;
@@ -52,5 +52,5 @@ export async function deleteSaved(id: string): Promise<void> {
 }
 
 export function openHref(m: Pick<SavedModel, "kind" | "token">): string {
-  return m.kind === "dcf" ? `/dcf?m=${m.token}` : `/options?o=${m.token}`;
+  return m.kind === "dcf" ? `/dcf?m=${m.token}` : m.kind === "fin" ? `/financials?f=${m.token}` : `/options?o=${m.token}`;
 }

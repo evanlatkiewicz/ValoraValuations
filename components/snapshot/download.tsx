@@ -40,3 +40,38 @@ export async function downloadSnapshot(model: DcfInputs, market: MarketData | nu
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
+
+/** The bank and insurer version: same data sources, equity-based valuation. */
+export async function downloadFinSnapshot(model: import("@/lib/equity").EquityInputs, market: MarketData | null): Promise<void> {
+  const t = encodeURIComponent(model.company.ticker);
+  const [peers, earnings, dividend, rates, { pdf }, { FinSnapshotDoc }, { registerFonts }, { buildFinSnapshot }] = await Promise.all([
+    json(`/api/peers?ticker=${t}`),
+    json(`/api/earnings?ticker=${t}`),
+    json(`/api/dividend?ticker=${t}`),
+    json("/api/rates"),
+    import("@react-pdf/renderer"),
+    import("./FinSnapshotDoc"),
+    import("./SnapshotDoc"),
+    import("@/lib/finSnapshot"),
+  ]);
+  const data = buildFinSnapshot({
+    model,
+    market,
+    curve: (rates as Rates | null)?.curve ?? null,
+    tenYear: (rates as Rates | null)?.rate ?? null,
+    peers: peers && Array.isArray(peers.peers) ? peers.peers : null,
+    earnings: earnings?.next ?? null,
+    dps: typeof dividend?.dps === "number" ? dividend.dps : null,
+    today: new Date().toLocaleDateString("en-CA"),
+  });
+  const domain = (market?.logo ?? model.company.logo ?? "").replace("https://api.twelvedata.com/logo/", "");
+  const logo = domain ? `${location.origin}/api/logo?l=${encodeURIComponent(domain)}` : null;
+  registerFonts(location.origin);
+  const host = publicOrigin().replace(/^https?:\/\//, "");
+  const blob = await pdf(<FinSnapshotDoc data={data} logo={logo} url={`${host}/financials`} />).toBlob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `Valora_${model.company.ticker || "company"}_snapshot_${data.today}.pdf`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}

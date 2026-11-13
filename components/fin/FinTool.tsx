@@ -49,11 +49,11 @@ const STAGES: { id: FinStage; label: string }[] = [
 
 const KEY = "valora:fin";
 
-export function FinTool() {
-  const [m, setM] = useState<EquityInputs | null>(null);
-  const [baseline, setBaseline] = useState<EquityInputs | null>(null);
-  const [home, setHome] = useState(true);
-  const [stage, setStage] = useState<FinStage>("inputs");
+export function FinTool({ initial }: { initial?: EquityInputs | null }) {
+  const [m, setM] = useState<EquityInputs | null>(initial ?? null);
+  const [baseline, setBaseline] = useState<EquityInputs | null>(initial ?? null);
+  const [home, setHome] = useState(!initial);
+  const [stage, setStage] = useState<FinStage>(initial ? "results" : "inputs");
   const [ticker, setTicker] = useState("");
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -114,6 +114,11 @@ export function FinTool() {
 
   // Restore this tab's model, or load the ticker the Companies tool handed over (?t=GS)
   useEffect(() => {
+    if (initial) {
+      // A shared link: refresh the logo-less parts quietly, keep the shared numbers
+      fetch(`/api/prices?ticker=${encodeURIComponent(initial.company.ticker)}`).then((r) => (r.ok ? r.json() : null)).then((d) => d && setMarket(d)).catch(() => null);
+      return;
+    }
     const t = new URLSearchParams(window.location.search).get("t");
     if (t) {
       load(t);
@@ -182,7 +187,14 @@ export function FinTool() {
           ) : (
             <span />
           )}
-          <Menu optionModel={null} />
+          <Menu
+            finModel={m && !home ? m : null}
+            onSnapshot={
+              m && !home && m.sharePrice > 0
+                ? async () => (await import("../snapshot/download")).downloadFinSnapshot(m, market)
+                : undefined
+            }
+          />
         </div>
         {!home && m && (
           <nav className="stages" aria-label="Stages">

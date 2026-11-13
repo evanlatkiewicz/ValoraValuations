@@ -25,37 +25,38 @@ export function registerFonts(origin: string) {
   registered = true;
 }
 
-const PAPER = "#f7f9f3";
-const INK = "#18201c";
-const SOFT = "#4a5650";
-const FAINT = "#7a857e";
-const RULE = "#cfd9c8";
-const TINT = "#e3e8db";
-const GREEN = "#2f5d46";
-const RED = "#b0281f";
-const AMBER = "#a86c12";
+export const PAPER = "#f7f9f3";
+export const INK = "#18201c";
+export const SOFT = "#4a5650";
+export const FAINT = "#7a857e";
+export const RULE = "#cfd9c8";
+export const TINT = "#e3e8db";
+export const GREEN = "#2f5d46";
+export const RED = "#b0281f";
+export const AMBER = "#a86c12";
 
 // ---------- formatting ----------
-const usd = (n: number, d = 2) => `${n < 0 ? "−" : ""}$${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d })}`;
-const big = (dollars: number) => {
+export const usd = (n: number, d = 2) => `${n < 0 ? "−" : ""}$${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d })}`;
+export const big = (dollars: number) => {
   const a = Math.abs(dollars);
   const s = a >= 1e12 ? `${(a / 1e12).toFixed(2)}T` : a >= 1e9 ? `${(a / 1e9).toFixed(a >= 1e11 ? 0 : 1)}B` : `${(a / 1e6).toFixed(0)}M`;
   return `${dollars < 0 ? "−" : ""}$${s}`;
 };
-const mil = (m: number) => big(m * 1e6);
-const pct = (x: number | null, d = 1) => (x === null || !Number.isFinite(x) ? "n/a" : `${(x * 100).toFixed(d)}%`);
-const spct = (x: number | null, d = 1) => (x === null || !Number.isFinite(x) ? "n/a" : `${x > 0 ? "+" : x < 0 ? "−" : ""}${Math.abs(x * 100).toFixed(d)}%`);
-const mult = (x: number | null) => (x === null || !Number.isFinite(x) || x <= 0 || x > 999 ? "n/a" : `${x.toFixed(1)}x`);
-const vol = (v: number | null) => (v === null ? "n/a" : v >= 1e9 ? `${(v / 1e9).toFixed(2)}B` : v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : `${Math.round(v / 1e3)}K`);
+export const mil = (m: number) => big(m * 1e6);
+export const pct = (x: number | null, d = 1) => (x === null || !Number.isFinite(x) ? "n/a" : `${(x * 100).toFixed(d)}%`);
+export const spct = (x: number | null, d = 1) => (x === null || !Number.isFinite(x) ? "n/a" : `${x > 0 ? "+" : x < 0 ? "−" : ""}${Math.abs(x * 100).toFixed(d)}%`);
+export const mult = (x: number | null) => (x === null || !Number.isFinite(x) || x <= 0 || x > 999 ? "n/a" : `${x.toFixed(1)}x`);
+export const vol = (v: number | null) => (v === null ? "n/a" : v >= 1e9 ? `${(v / 1e9).toFixed(2)}B` : v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : `${Math.round(v / 1e3)}K`);
 // Drop legal suffixes so peer names fit on one line
-const short = (n: string) => {
+export const short = (n: string) => {
   const t = n.replace(/,?\s+(Inc\.?|Corporation|Corp\.?|Co\.?|Company|Ltd\.?|plc|PLC|N\.V\.|Holdings?|Group)$/i, "").replace(/,?\s+(Inc\.?|Corporation|Corp\.?|Group)$/i, "");
-  return t.length > 20 ? t.slice(0, 19) + "…" : t;
+  const u = t.replace(/^The\s+/i, "").replace(/\s*&$/, "");
+  return u.length > 20 ? u.slice(0, 19) + "…" : u;
 };
-const date = (d: string | null) =>
+export const date = (d: string | null) =>
   d ? new Date(d + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }) : "n/a";
 
-const s = StyleSheet.create({
+export const s = StyleSheet.create({
   page: { backgroundColor: PAPER, color: INK, fontFamily: "Schibsted", fontSize: 8.5, paddingHorizontal: 30, paddingTop: 26, paddingBottom: 44 },
   row: { flexDirection: "row" },
   h2: { fontSize: 10, fontWeight: 800, letterSpacing: -0.2, marginBottom: 5 },
@@ -65,7 +66,7 @@ const s = StyleSheet.create({
   band: { marginTop: 9, paddingTop: 8, borderTopWidth: 1.5, borderTopColor: INK },
 });
 
-function Stars({ value }: { value: number }) {
+export function Stars({ value }: { value: number }) {
   const pts = (cx: number) => {
     const out: string[] = [];
     for (let i = 0; i < 10; i++) {
@@ -85,7 +86,7 @@ function Stars({ value }: { value: number }) {
   );
 }
 
-function PriceChart({ data, w, h }: { data: SnapshotData; w: number; h: number }) {
+export function PriceChart({ data, w, h }: { data: Pick<SnapshotData, "chart" | "yearReturn">; w: number; h: number }) {
   const pts = data.chart;
   if (pts.length < 2) return <Text style={s.cap}>No price history available.</Text>;
   const cs = pts.map((p) => p.c);
@@ -143,7 +144,7 @@ function RangeBar({ data, w }: { data: SnapshotData; w: number }) {
   );
 }
 
-function Stat({ k, v, color }: { k: string; v: string; color?: string }) {
+export function Stat({ k, v, color }: { k: string; v: string; color?: string }) {
   return (
     <View style={[s.row, s.rule, { justifyContent: "space-between", paddingVertical: 2.2 }]}>
       <Text style={{ color: SOFT }}>{k}</Text>
@@ -152,17 +153,13 @@ function Stat({ k, v, color }: { k: string; v: string; color?: string }) {
   );
 }
 
-export function SnapshotDoc({ data, logo, url }: { data: SnapshotData; logo: string | null; url: string }) {
-  const q = data.quote;
-  const v = data.valuation;
-  const chg = q.change ?? 0;
-  const W = 552;
-  const half = (W - 22) / 2;
 
+type Quote = SnapshotData["quote"];
+
+export function SnapHeader({ company, today, logo, subtitle = "Company snapshot" }: { company: { name: string; ticker: string; baseYear: string; form: string; currency?: string | null }; today: string; logo: string | null; subtitle?: string }) {
+  const data = { company, today };
   return (
-    <Document title={`${data.company.name} (${data.company.ticker}) snapshot`} author="Valora" creator="Valora">
-      <Page size="LETTER" style={s.page} wrap={false}>
-        {/* Header */}
+    <>
         <View style={[s.row, { alignItems: "center", justifyContent: "space-between" }]}>
           <View style={[s.row, { alignItems: "center" }]}>
             {logo ? (
@@ -182,11 +179,20 @@ export function SnapshotDoc({ data, logo, url }: { data: SnapshotData; logo: str
           </View>
           <View style={{ alignItems: "flex-end" }}>
             <Text style={{ fontSize: 13, fontWeight: 800, letterSpacing: -0.4 }}>Valora</Text>
-            <Text style={s.cap}>Company snapshot</Text>
+            <Text style={s.cap}>{subtitle}</Text>
           </View>
         </View>
 
-        {/* The stock */}
+    </>
+  );
+}
+
+export function StockBand({ quote, chart, yearReturn }: { quote: Quote; chart: SnapshotData["chart"]; yearReturn: number | null }) {
+  const q = quote;
+  const chg = q.change ?? 0;
+  const data = { chart, yearReturn };
+  return (
+    <>
         <View style={[s.band, s.row]}>
           <View style={{ width: 332 }}>
             <View style={[s.row, { alignItems: "flex-end" }]}>
@@ -214,6 +220,78 @@ export function SnapshotDoc({ data, logo, url }: { data: SnapshotData; logo: str
             <Stat k="Next earnings" v={q.nextEarnings ? date(q.nextEarnings) : "n/a"} />
           </View>
         </View>
+
+    </>
+  );
+}
+
+export function OptionsBlock({ options, quote, width }: { options: SnapshotData["options"]; quote: Quote; width: number }) {
+  const q = quote;
+  const data = { options };
+  const half = width;
+  return (
+          <View style={{ width: half }}>
+            <Text style={s.h2}>Options, three months out</Text>
+            {data.options ? (
+              <>
+                <Text style={[s.cap, { marginBottom: 3 }]}>
+                  {`Black-Scholes, ${usd(data.options.strike)} strike, expiring ${date(data.options.expiry)} (${data.options.days} days).`}
+                </Text>
+                <View style={[s.row, { marginBottom: 3 }]}>
+                  <View style={{ flex: 1, borderLeftWidth: 3, borderLeftColor: "#3f8a55", paddingLeft: 6 }}>
+                    <Text style={{ fontSize: 7, color: SOFT }}>Call</Text>
+                    <Text style={[s.mono, { fontSize: 13, fontWeight: 600 }]}>{usd(data.options.call)}</Text>
+                  </View>
+                  <View style={{ flex: 1, borderLeftWidth: 3, borderLeftColor: "#2b5aa0", paddingLeft: 6 }}>
+                    <Text style={{ fontSize: 7, color: SOFT }}>Put</Text>
+                    <Text style={[s.mono, { fontSize: 13, fontWeight: 600 }]}>{usd(data.options.put)}</Text>
+                  </View>
+                </View>
+                <Stat k="Historical volatility (1 year)" v={pct(data.options.vol)} />
+                <Stat k="Expected move by expiration" v={`±${usd(data.options.expectedMove)} (${pct(data.options.expectedMove / q.price, 1)})`} />
+                <Stat k="Treasury yield for the term" v={pct(data.options.rate, 2)} />
+                {data.options.earningsBefore && (
+                  <Text style={[s.cap, { color: AMBER, marginTop: 3 }]}>
+                    {`Earnings on ${date(q.nextEarnings)} fall before expiration, so real prices are likely higher.`}
+                  </Text>
+                )}
+              </>
+            ) : (
+              <Text style={s.cap}>Not enough price history to measure volatility.</Text>
+            )}
+          </View>
+
+  );
+}
+
+export function SnapFooter({ url, note = "The valuation reflects the assumptions in this model and is for learning, not investment advice." }: { url: string; note?: string }) {
+  return (
+    <>
+        <View style={{ position: "absolute", left: 30, right: 30, bottom: 20, borderTopWidth: 1, borderTopColor: RULE, paddingTop: 5 }} fixed>
+          <View style={[s.row, { justifyContent: "space-between" }]}>
+            <Text style={{ fontSize: 6.5, color: FAINT, width: 430, lineHeight: 1.3 }}>
+              Financials from SEC EDGAR filings. Prices from Twelve Data. Treasury yields from FRED. Peers and earnings dates from Financial
+              Modeling Prep. {note}
+            </Text>
+            <Text style={[s.mono, { fontSize: 6.5, color: INK }]}>{url}</Text>
+          </View>
+        </View>
+    </>
+  );
+}
+
+export function SnapshotDoc({ data, logo, url }: { data: SnapshotData; logo: string | null; url: string }) {
+  const q = data.quote;
+  const v = data.valuation;
+  const W = 552;
+  const half = (W - 22) / 2;
+
+  return (
+    <Document title={`${data.company.name} (${data.company.ticker}) snapshot`} author="Valora" creator="Valora">
+      <Page size="LETTER" style={s.page} wrap={false}>
+        <SnapHeader company={data.company} today={data.today} logo={logo} />
+
+        <StockBand quote={q} chart={data.chart} yearReturn={data.yearReturn} />
 
         {/* Financials */}
         <View style={s.band}>
@@ -335,36 +413,7 @@ export function SnapshotDoc({ data, logo, url }: { data: SnapshotData; logo: str
 
         {/* Options and notes */}
         <View style={[s.band, s.row]}>
-          <View style={{ width: half }}>
-            <Text style={s.h2}>Options, three months out</Text>
-            {data.options ? (
-              <>
-                <Text style={[s.cap, { marginBottom: 3 }]}>
-                  {`Black-Scholes, ${usd(data.options.strike)} strike, expiring ${date(data.options.expiry)} (${data.options.days} days).`}
-                </Text>
-                <View style={[s.row, { marginBottom: 3 }]}>
-                  <View style={{ flex: 1, borderLeftWidth: 3, borderLeftColor: "#3f8a55", paddingLeft: 6 }}>
-                    <Text style={{ fontSize: 7, color: SOFT }}>Call</Text>
-                    <Text style={[s.mono, { fontSize: 13, fontWeight: 600 }]}>{usd(data.options.call)}</Text>
-                  </View>
-                  <View style={{ flex: 1, borderLeftWidth: 3, borderLeftColor: "#2b5aa0", paddingLeft: 6 }}>
-                    <Text style={{ fontSize: 7, color: SOFT }}>Put</Text>
-                    <Text style={[s.mono, { fontSize: 13, fontWeight: 600 }]}>{usd(data.options.put)}</Text>
-                  </View>
-                </View>
-                <Stat k="Historical volatility (1 year)" v={pct(data.options.vol)} />
-                <Stat k="Expected move by expiration" v={`±${usd(data.options.expectedMove)} (${pct(data.options.expectedMove / q.price, 1)})`} />
-                <Stat k="Treasury yield for the term" v={pct(data.options.rate, 2)} />
-                {data.options.earningsBefore && (
-                  <Text style={[s.cap, { color: AMBER, marginTop: 3 }]}>
-                    {`Earnings on ${date(q.nextEarnings)} fall before expiration, so real prices are likely higher.`}
-                  </Text>
-                )}
-              </>
-            ) : (
-              <Text style={s.cap}>Not enough price history to measure volatility.</Text>
-            )}
-          </View>
+          <OptionsBlock options={data.options} quote={q} width={half} />
 
           <View style={{ width: half, marginLeft: 22 }}>
             <Text style={s.h2}>What to look at</Text>
@@ -389,16 +438,7 @@ export function SnapshotDoc({ data, logo, url }: { data: SnapshotData; logo: str
           </View>
         </View>
 
-        {/* Footer */}
-        <View style={{ position: "absolute", left: 30, right: 30, bottom: 20, borderTopWidth: 1, borderTopColor: RULE, paddingTop: 5 }} fixed>
-          <View style={[s.row, { justifyContent: "space-between" }]}>
-            <Text style={{ fontSize: 6.5, color: FAINT, width: 430, lineHeight: 1.3 }}>
-              Financials from SEC EDGAR filings. Prices from Twelve Data. Treasury yields from FRED. Peers and earnings dates from Financial
-              Modeling Prep. The valuation reflects the assumptions in this model and is for learning, not investment advice.
-            </Text>
-            <Text style={[s.mono, { fontSize: 6.5, color: INK }]}>{url}</Text>
-          </View>
-        </View>
+        <SnapFooter url={url} />
       </Page>
     </Document>
   );

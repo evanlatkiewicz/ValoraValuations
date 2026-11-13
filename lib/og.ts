@@ -4,6 +4,8 @@ import { runDcf } from "./dcf";
 import { analyze } from "./scenarios";
 import type { DcfInputs } from "./types";
 import { runOption, type OptionModel } from "./optionModel";
+import { runEquity, type EquityInputs } from "./equity";
+import { equityChecks } from "./equityChecks";
 
 export interface CardSummary {
   name: string;
@@ -142,6 +144,60 @@ export function readOptionCard(q: URLSearchParams): OptionCard | null {
     ticker: (q.get("t") ?? "").slice(0, 10),
     type: q.get("ty") === "put" ? "put" : "call",
     expiry: /^\d{4}-\d{2}-\d{2}$/.test(expiry) ? expiry : "",
+    logo: logoUrlFor(q.get("l")) ? q.get("l") : null,
+  };
+}
+
+// ---------- Bank and insurer cards ----------
+
+export interface FinCard {
+  name: string;
+  ticker: string;
+  year: string;
+  value: number;
+  price: number;
+  bookPerShare: number;
+  stars: number;
+  kind: string;
+  logo: string | null;
+}
+
+export function summarizeFin(m: EquityInputs): FinCard | null {
+  if (!(m.sharePrice > 0 && m.sharesOutstanding > 0)) return null;
+  const r = runEquity(m);
+  if (!Number.isFinite(r.valuePerShare)) return null;
+  return {
+    name: (m.company.name || m.company.ticker).slice(0, 48),
+    ticker: m.company.ticker.slice(0, 10),
+    year: m.company.baseYearLabel.slice(0, 10),
+    value: r.valuePerShare,
+    price: m.sharePrice,
+    bookPerShare: r.bookPerShare,
+    stars: starRating(equityChecks(m, r)),
+    kind: m.company.kind,
+    logo: m.company.logo?.startsWith(LOGO_PREFIX) ? m.company.logo.slice(LOGO_PREFIX.length) : null,
+  };
+}
+
+export function finCardQuery(c: FinCard): string {
+  const q = new URLSearchParams({ k: "f", n: c.name, t: c.ticker, y: c.year, v: c.value.toFixed(2), p: c.price.toFixed(2), b: c.bookPerShare.toFixed(2), s: String(c.stars), ki: c.kind });
+  if (c.logo) q.set("l", c.logo);
+  return q.toString();
+}
+
+export function readFinCard(q: URLSearchParams): FinCard | null {
+  if (q.get("k") !== "f" || !q.get("n")) return null;
+  const n = (k: string) => Number(q.get(k));
+  const v = { value: n("v"), price: n("p"), bookPerShare: n("b"), stars: n("s") };
+  if (!Object.values(v).every(Number.isFinite) || !(v.price > 0) || !(v.bookPerShare > 0)) return null;
+  const kind = q.get("ki") ?? "financial";
+  return {
+    ...v,
+    stars: Math.min(5, Math.max(0, v.stars)),
+    name: q.get("n")!.slice(0, 48),
+    ticker: (q.get("t") ?? "").slice(0, 10),
+    year: (q.get("y") ?? "").slice(0, 10),
+    kind: ["bank", "insurer", "reit", "financial"].includes(kind) ? kind : "financial",
     logo: logoUrlFor(q.get("l")) ? q.get("l") : null,
   };
 }

@@ -35,7 +35,7 @@ export function AccountPage() {
   }
 
   const remove = async (m: SavedModel) => {
-    if (!window.confirm(`Delete your saved ${m.kind === "dcf" ? "model" : "option"} for ${m.ticker}? This can't be undone.`)) return;
+    if (!window.confirm(`Delete your saved ${m.kind === "option" ? "option" : "model"} for ${m.ticker}? This can't be undone.`)) return;
     setBusy(m.id);
     try {
       await deleteSaved(m.id);
@@ -52,12 +52,19 @@ export function AccountPage() {
     setBusy(m.id);
     setError(null);
     try {
-      const [{ decodeAny }, { downloadSnapshot }] = await Promise.all([import("@/lib/share"), import("../snapshot/download")]);
-      const model = await decodeAny(m.token);
-      if (!model) throw new Error("bad model");
       const market = await fetch(`/api/prices?ticker=${encodeURIComponent(m.ticker)}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
-      const fresh = market?.last?.c ? { ...model, sharePrice: market.last.c, company: { ...model.company, priceDate: market.last.d } } : model;
-      await downloadSnapshot(fresh, market, null);
+      if (m.kind === "fin") {
+        const [{ decodeFin }, { downloadFinSnapshot }] = await Promise.all([import("@/lib/finShare"), import("../snapshot/download")]);
+        const model = await decodeFin(m.token);
+        if (!model) throw new Error("bad model");
+        await downloadFinSnapshot(model, market);
+      } else {
+        const [{ decodeAny }, { downloadSnapshot }] = await Promise.all([import("@/lib/share"), import("../snapshot/download")]);
+        const model = await decodeAny(m.token);
+        if (!model) throw new Error("bad model");
+        const fresh = market?.last?.c ? { ...model, sharePrice: market.last.c, company: { ...model.company, priceDate: market.last.d } } : model;
+        await downloadSnapshot(fresh, market, null);
+      }
     } catch {
       setError("Couldn't build that snapshot. Try opening the model and downloading it from the menu.");
     } finally {
@@ -97,10 +104,10 @@ export function AccountPage() {
                   <div className="saved-title">
                     <span className="co-ticker">{m.ticker}</span>
                     <span>{m.name}</span>
-                    <span className={`saved-kind ${m.kind}`}>{m.kind === "dcf" ? "DCF" : "Option"}</span>
+                    <span className={`saved-kind ${m.kind}`}>{m.kind === "dcf" ? "DCF" : m.kind === "fin" ? "Excess return" : "Option"}</span>
                   </div>
                   <div className="saved-meta">
-                    {m.kind === "dcf" && value !== null && px !== null && (
+                    {m.kind !== "option" && value !== null && px !== null && (
                       <span>
                         Value {price(value)} vs. {price(px)} ({signedPct(value / px - 1, 0)})
                         {typeof s.year === "string" ? `, ${s.year}` : ""}
@@ -118,7 +125,7 @@ export function AccountPage() {
                 </div>
                 <div className="saved-actions">
                   <Link className="btn small" href={openHref(m)}>Open</Link>
-                  {m.kind === "dcf" && (
+                  {m.kind !== "option" && (
                     <button className="btn ghost small" onClick={() => snapshot(m)} disabled={busy === m.id}>
                       {busy === m.id ? "Working" : "Snapshot PDF"}
                     </button>

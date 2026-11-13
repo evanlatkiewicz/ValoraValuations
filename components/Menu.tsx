@@ -8,6 +8,7 @@ import { loadSession } from "@/lib/session";
 import type { DcfInputs } from "@/lib/types";
 import type { ScenarioId } from "@/lib/scenarios";
 import type { OptionModel } from "@/lib/optionModel";
+import type { EquityInputs } from "@/lib/equity";
 import { accountsEnabled } from "@/lib/supabase";
 import { useUser } from "./useUser";
 
@@ -20,6 +21,7 @@ export function Menu({
   canExport = true,
   scenario = "base",
   optionModel,
+  finModel,
   onSnapshot,
 }: {
   inputs?: DcfInputs;
@@ -27,10 +29,13 @@ export function Menu({
   scenario?: ScenarioId;
   /** Set on the options page: share and download the option instead of a DCF. */
   optionModel?: OptionModel | null;
+  /** Set on the bank and insurer page. */
+  finModel?: EquityInputs | null;
   /** Builds and downloads the one-page company snapshot (DCF page only). */
   onSnapshot?: () => Promise<void>;
 }) {
   const onOptions = optionModel !== undefined;
+  const onFin = finModel !== undefined;
   // "closing" keeps the panel on screen while its exit animation plays
   const [phase, setPhase] = useState<"closed" | "open" | "closing">("closed");
   const open = phase === "open";
@@ -39,7 +44,7 @@ export function Menu({
   const close = () => setPhase((p) => (p === "open" ? (reduced() ? "closed" : "closing") : p));
   const toggle = () => {
     if (phase === "open") return close();
-    setAvailable(onOptions ? !!optionModel : inputs ? canExport : !!loadSession()?.inputs);
+    setAvailable(onFin ? !!finModel : onOptions ? !!optionModel : inputs ? canExport : !!loadSession()?.inputs);
     setPhase("open");
   };
   const [status, setStatus] = useState<string | null>(null);
@@ -76,7 +81,11 @@ export function Menu({
 
   const share = async () => {
     let url: string;
-    if (onOptions) {
+    if (onFin) {
+      if (!finModel) return;
+      const { finShareUrl } = await import("@/lib/finShare");
+      url = await finShareUrl(publicOrigin(), finModel);
+    } else if (onOptions) {
       if (!optionModel) return;
       const { optionShareUrl } = await import("@/lib/optionShare");
       url = await optionShareUrl(publicOrigin(), optionModel);
@@ -101,7 +110,12 @@ export function Menu({
       const { default: ExcelJS } = await import("exceljs");
       let buf: ArrayBuffer;
       let fileName: string;
-      if (onOptions) {
+      if (onFin) {
+        if (!finModel) throw new Error("no model");
+        const { buildFinWorkbook, finWorkbookName } = await import("@/lib/finExcel");
+        buf = await buildFinWorkbook(ExcelJS, finModel).xlsx.writeBuffer();
+        fileName = finWorkbookName(finModel);
+      } else if (onOptions) {
         if (!optionModel) throw new Error("no option");
         const { buildOptionWorkbook, optionWorkbookName } = await import("@/lib/optionsExcel");
         buf = await buildOptionWorkbook(ExcelJS, optionModel).xlsx.writeBuffer();
@@ -137,7 +151,18 @@ export function Menu({
     setStatus("Saving");
     try {
       const { saveModel } = await import("@/lib/supabase");
-      if (onOptions) {
+      if (onFin) {
+        if (!finModel) return;
+        const [{ encodeFin }, { runEquity }] = await Promise.all([import("@/lib/finShare"), import("@/lib/equity")]);
+        const r = runEquity(finModel);
+        await saveModel({
+          kind: "fin",
+          ticker: finModel.company.ticker,
+          name: finModel.company.name.slice(0, 120),
+          token: await encodeFin(finModel),
+          summary: { value: r.valuePerShare, price: finModel.sharePrice, year: finModel.company.baseYearLabel, pb: r.impliedPriceToBook },
+        });
+      } else if (onOptions) {
         if (!optionModel) return;
         const [{ encodeOption }, { runOption }] = await Promise.all([import("@/lib/optionShare"), import("@/lib/optionModel")]);
         const r = runOption(optionModel);
@@ -226,7 +251,7 @@ export function Menu({
               </button>
             )}
             {accountsEnabled && (
-              <button role="menuitem" className="menu-item" onClick={save} disabled={!available || (!onOptions && !inputs)}>
+              <button role="menuitem" className="menu-item" onClick={save} disabled={!available || (!onOptions && !onFin && !inputs)}>
                 Save to my account
               </button>
             )}
