@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { TickerSearch } from "./TickerSearch";
 
 export interface StartCopy {
   title: string;
@@ -13,7 +13,7 @@ export interface StartCopy {
 
 export const DCF_COPY: StartCopy = {
   title: "Let\u2019s get started.",
-  lede: "Enter a stock ticker. Valora pulls the company\u2019s last three years from its 10-K, adds today\u2019s share price, and walks you through valuing it.",
+  lede: "Enter a ticker or start typing a company name. Valora pulls the company\u2019s last three years from its 10-K, adds today\u2019s share price, and walks you through valuing it.",
   button: "Value this company",
   picks: ["AAPL", "MSFT", "NVDA", "COST", "KO", "NKE"],
   steps: [
@@ -43,10 +43,6 @@ export function StartScreen({
   onBlank?: () => void;
   resume: { name: string; go: () => void } | null;
 }) {
-  const input = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    input.current?.focus();
-  }, []);
 
   return (
     <main className="start">
@@ -54,31 +50,18 @@ export function StartScreen({
         <h1 className="start-title">{copy.title}</h1>
         <p className="start-lede">{copy.lede}</p>
 
-        <form
-          className="start-form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            onLoad(ticker);
-          }}
-        >
-          <label htmlFor="start-ticker" className="sr-only">Ticker symbol</label>
-          <input
-            ref={input}
-            id="start-ticker"
-            className="start-input"
-            placeholder="Ticker"
-            value={ticker}
-            onChange={(e) => setTicker(e.target.value.toUpperCase())}
-            autoComplete="off"
-            spellCheck={false}
-            maxLength={10}
-            disabled={!!loading}
-            aria-describedby="start-hint"
-          />
-          <button className="btn start-btn" type="submit" disabled={!!loading || !ticker.trim()}>
-            {loading ? "Loading" : copy.button}
-          </button>
-        </form>
+        <TickerSearch
+          id="start-ticker"
+          size="large"
+          value={ticker}
+          onChange={setTicker}
+          onSubmit={onLoad}
+          button={loading ? "Loading" : copy.button}
+          busy={!!loading}
+          placeholder="Ticker or company name"
+          autoFocus
+          describedBy="start-hint"
+        />
 
         <div id="start-hint" className="start-status" aria-live="polite">
           {loading ? (

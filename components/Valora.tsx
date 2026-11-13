@@ -17,6 +17,7 @@ import type { RiskFree } from "@/lib/rates";
 import type { DcfInputs, DcfResult } from "@/lib/types";
 import { Mark } from "./ui";
 import Link from "next/link";
+import { TickerSearch } from "./TickerSearch";
 import { ToolNav } from "./ToolNav";
 import { InputsStage } from "./InputsStage";
 import { ModelStage } from "./ModelStage";
@@ -288,22 +289,16 @@ export default function Valora() {
           <ToolNav />
           {!home ? (
             <div className="company-pick">
-              <form className="ticker-form" onSubmit={(e) => { e.preventDefault(); loadTicker(ticker); }} role="search">
-                <label htmlFor="ticker" className="sr-only">Ticker symbol</label>
-                <input
-                  id="ticker"
-                  className="ticker-input"
-                  placeholder="Another ticker"
-                  value={ticker}
-                  onChange={(e) => setTicker(e.target.value.toUpperCase())}
-                  autoComplete="off"
-                  spellCheck={false}
-                  maxLength={10}
-                />
-                <button className="btn small" type="submit" disabled={!!loading || !ticker.trim()}>
-                  {loading ? "Loading" : "Load"}
-                </button>
-              </form>
+              <TickerSearch
+                id="ticker"
+                size="small"
+                value={ticker}
+                onChange={setTicker}
+                onSubmit={loadTicker}
+                button={loading ? "Loading" : "Load"}
+                busy={!!loading}
+                placeholder="Ticker or company"
+              />
               {edited && (
                 <button className="linkbtn reset-btn" onClick={reset}>
                   Reset to starting values

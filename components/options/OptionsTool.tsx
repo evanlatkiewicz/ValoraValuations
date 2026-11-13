@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Menu } from "../Menu";
 import { Mark } from "../ui";
+import { TickerSearch } from "../TickerSearch";
 import { ToolNav } from "../ToolNav";
 import { CompanyLogo } from "../CompanyBar";
 import { StartScreen, type StartCopy } from "../StartScreen";
@@ -33,7 +34,7 @@ export interface OptCtx {
 
 const COPY: StartCopy = {
   title: "Price an option.",
-  lede: "Enter a stock ticker. Valora pulls the share price, a year of price history for volatility, the Treasury yield and the dividend, then prices a call and a put with Black-Scholes.",
+  lede: "Enter a ticker or start typing a company name. Valora pulls the share price, a year of price history for volatility, the Treasury yield and the dividend, then prices a call and a put with Black-Scholes.",
   button: "Price options on it",
   picks: ["AAPL", "NVDA", "TSLA", "MSFT", "KO", "JPM"],
   steps: [
@@ -193,12 +194,8 @@ export function OptionsTool({ initial }: { initial?: OptionModel | null }) {
         <ToolNav />
         {!home && m ? (
           <div className="company-pick">
-            <form className="ticker-form" onSubmit={(e) => { e.preventDefault(); load(ticker); }} role="search">
-              <label htmlFor="opt-ticker" className="sr-only">Ticker symbol</label>
-              <input id="opt-ticker" className="ticker-input" placeholder="Another ticker" value={ticker}
-                onChange={(e) => setTicker(e.target.value.toUpperCase())} autoComplete="off" spellCheck={false} maxLength={10} />
-              <button className="btn small" type="submit" disabled={!!loading || !ticker.trim()}>{loading ? "Loading" : "Load"}</button>
-            </form>
+            <TickerSearch id="opt-ticker" size="small" value={ticker} onChange={setTicker} onSubmit={load}
+              button={loading ? "Loading" : "Load"} busy={!!loading} placeholder="Ticker or company" />
             {edited && <button className="linkbtn reset-btn" onClick={() => setM(baseline)}>Reset to starting values</button>}
             <button className="linkbtn reset-btn" onClick={() => { setHome(true); setError(null); }}>New option</button>
           </div>
