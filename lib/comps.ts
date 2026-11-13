@@ -6,6 +6,7 @@ import type { DcfInputs, DcfResult } from "./types";
 export interface PeerRow {
   symbol: string;
   name: string;
+  year?: string; // fiscal year the fundamentals come from
   marketCap: number | null; // dollars
   ev: number | null; // dollars
   evSales: number | null;

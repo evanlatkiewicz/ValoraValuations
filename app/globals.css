@@ -680,3 +680,4 @@ a.inst:hover .inst-go { background: var(--green); border-color: var(--green); }
 .comps tr.is-self td { background: var(--paper-deep); font-weight: 600; }
 .comps tr.is-median td { border-top: 1.5px solid var(--ink); font-weight: 700; }
 .comps tr.is-model td { font-weight: 700; color: var(--green); }
+.comps-year { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-faint); margin-left: 4px; }

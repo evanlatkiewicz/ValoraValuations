@@ -95,6 +95,7 @@ const C = {
   commercialPaper: ["CommercialPaper"],
   shortTermBorrowings: ["ShortTermBorrowings"],
   ltdTotal: ["LongTermDebt"],
+  netIncome: ["NetIncomeLoss", "ProfitLoss"],
 };
 
 // The same ideas under IFRS. Some are summed rather than picked (see `sumAt`).
@@ -124,6 +125,7 @@ const I = {
   debtCurrentParts: ["CurrentBondsIssuedAndCurrentPortionOfNoncurrentBondsIssued", "CurrentPortionOfLongtermBorrowings", "ShorttermBorrowings"],
   debtNoncurrentParts: ["NoncurrentPortionOfNoncurrentBondsIssued", "LongtermBorrowings"],
   shares: ["NumberOfSharesOutstanding"],
+  netIncome: ["ProfitLossAttributableToOwnersOfParent", "ProfitLoss"],
 };
 
 const USD_BOOK: Book = { tax: "us-gaap", unit: "USD", form: "10-K" };
@@ -521,4 +523,16 @@ export function dividendInfo(f: CompanyFacts, ticker = "", fx?: Fx | null): { dp
   // Foreign companies file their annual report later in the year, so allow more time.
   const age = days(best.end, new Date().toISOString().slice(0, 10));
   return age > (book.form === "10-K" ? 550 : 800) ? null : { dps: best.dps, year: best.year };
+}
+
+/** Net income for the latest fiscal year, in $ millions (converted with `fx` for foreign reporters). */
+export function netIncomeFromFacts(f: CompanyFacts, fx?: Fx | null): number | null {
+  const book = reportingBook(f);
+  if (!book) return null;
+  if (book.unit !== "USD" && (!fx || fx.currency !== book.unit)) return null;
+  const k = book.unit === "USD" ? 1 : fx!.rate;
+  const rev = pick(f, (book.tax === "ifrs-full" ? I : C).revenue, "annual", book);
+  if (!rev) return null;
+  const v = at(f, (book.tax === "ifrs-full" ? I : C).netIncome, latestKey(rev.series), "annual", book);
+  return v === null ? null : v * k;
 }

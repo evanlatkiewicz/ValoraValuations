@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Ctx } from "./Valora";
 import { readComps, type PeerRow } from "@/lib/comps";
+import { baseYear } from "@/lib/dcf";
 import { mult, moneyB, price, signedPct } from "@/lib/format";
 
-type Data = { self: PeerRow | null; peers: PeerRow[] };
+type Data = { peers: PeerRow[]; selfNetIncome: number | null };
 
 const m = (x: number | null) => (x !== null && Number.isFinite(x) && x > 0 && x < 1000 ? mult(x) : "n/a");
 
@@ -35,6 +36,26 @@ export function PeersSection({ ctx }: { ctx: Ctx }) {
 
   const read = useMemo(() => (data ? readComps(inp, r, data.peers) : null), [data, inp, r]);
 
+  // The company itself at today's price, measured the same way as its peers ($ millions).
+  const self = useMemo((): PeerRow | null => {
+    if (!(inp.sharePrice > 0 && inp.sharesOutstanding > 0)) return null;
+    const b = baseYear(inp);
+    const mcap = inp.sharePrice * inp.sharesOutstanding;
+    const ev = mcap + inp.debt - inp.cash;
+    const ebitda = b.ebit + b.da;
+    const ni = data?.selfNetIncome ?? null;
+    return {
+      symbol: ticker,
+      name: inp.company.name,
+      year: inp.company.baseYearLabel,
+      marketCap: mcap * 1e6,
+      ev: ev * 1e6,
+      evSales: b.revenue > 0 ? ev / b.revenue : null,
+      evEbitda: ebitda > 0 ? ev / ebitda : null,
+      pe: ni && ni > 0 ? mcap / ni : null,
+    };
+  }, [inp, ticker, data?.selfNetIncome]);
+
   if (!ticker || state === "idle") return null;
 
   return (
@@ -42,7 +63,7 @@ export function PeersSection({ ctx }: { ctx: Ctx }) {
       <h2 className="section-h">How similar companies are priced</h2>
       <p className="section-p">
         A DCF values the business on its own cash flows. Comparable companies (comps) check that against how the market prices its peers
-        today. Multiples are trailing twelve months.
+        today. Each multiple uses today&rsquo;s market value and the company&rsquo;s latest annual report.
       </p>
       {state === "loading" && <p className="muted" style={{ marginTop: 12 }}>Loading peers</p>}
       {state === "none" && (
@@ -64,21 +85,10 @@ export function PeersSection({ ctx }: { ctx: Ctx }) {
                 </tr>
               </thead>
               <tbody>
-                {data.self && (
-                  <tr className="is-self">
+                {[...(self ? [self] : []), ...data.peers].map((p, i) => (
+                  <tr key={p.symbol} className={self && i === 0 ? "is-self" : undefined}>
                     <td>
-                      <span className="co-ticker">{ticker}</span> {inp.company.name}
-                    </td>
-                    <td className="num">{data.self.marketCap ? moneyB(data.self.marketCap / 1e6) : "n/a"}</td>
-                    <td className="num">{m(data.self.evSales)}</td>
-                    <td className="num">{m(data.self.evEbitda)}</td>
-                    <td className="num">{m(data.self.pe)}</td>
-                  </tr>
-                )}
-                {data.peers.map((p) => (
-                  <tr key={p.symbol}>
-                    <td>
-                      <span className="co-ticker">{p.symbol}</span> {p.name}
+                      <span className="co-ticker">{p.symbol}</span> {p.name} {p.year && <span className="comps-year">{p.year}</span>}
                     </td>
                     <td className="num">{p.marketCap ? moneyB(p.marketCap / 1e6) : "n/a"}</td>
                     <td className="num">{m(p.evSales)}</td>
@@ -104,7 +114,8 @@ export function PeersSection({ ctx }: { ctx: Ctx }) {
             </table>
           </div>
           <p className="faint" style={{ fontSize: "var(--step--1)", marginTop: 8 }}>
-            Peers and multiples from Financial Modeling Prep, refreshed daily. &ldquo;Your DCF&rdquo; is your enterprise value divided by{" "}
+            Peers and market caps from Financial Modeling Prep; revenue, EBITDA, debt, cash and net income from each company&rsquo;s SEC
+            filings. Enterprise value is market cap plus debt minus cash. &ldquo;Your DCF&rdquo; is your enterprise value divided by{" "}
             {inp.company.baseYearLabel} EBITDA (EBIT plus D&amp;A).
           </p>
 
