@@ -242,6 +242,12 @@ export function OptionsTool({ initial }: { initial?: OptionModel | null }) {
                   <span>
                     {m.type === "call" ? "Call" : "Put"}, strike {fmtPrice(m.K)}, expires {fmtDate(m.expiry)} ({run.days} days)
                   </span>
+                  {m.valuationDate !== todayISO() && (
+                    <span>
+                      Priced as of {fmtDate(m.valuationDate)}.{" "}
+                      <button className="linkbtn" onClick={() => set({ valuationDate: todayISO() })}>Use today's date</button>
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="case-switch" role="group" aria-label="Option type">

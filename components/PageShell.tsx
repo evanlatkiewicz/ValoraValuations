@@ -12,6 +12,7 @@ const NAV: { group: string; items: [string, string][] }[] = [
     group: "Learn",
     items: [
       ["/learn/how-a-dcf-works", "How a DCF works"],
+      ["/learn/black-scholes", "How Black-Scholes works"],
       ["/learn/glossary", "Glossary"],
       ["/learn/interview-questions", "Common interview questions"],
     ],

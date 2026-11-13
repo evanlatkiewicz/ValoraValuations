@@ -3,6 +3,7 @@ import { runChecks, starRating } from "./checks";
 import { runDcf } from "./dcf";
 import { analyze } from "./scenarios";
 import type { DcfInputs } from "./types";
+import { runOption, type OptionModel } from "./optionModel";
 
 export interface CardSummary {
   name: string;
@@ -74,5 +75,73 @@ export function readCard(q: URLSearchParams): CardSummary | null {
       const p = (q.get("r") ?? "").split("_").map(Number);
       return p.length === 3 && p.every(Number.isFinite) ? { bear: p[0], bull: p[1], weighted: p[2] } : null;
     })(),
+  };
+}
+
+// ---------- Options cards ----------
+
+export interface OptionCard {
+  name: string;
+  ticker: string;
+  type: "call" | "put";
+  S: number;
+  K: number;
+  expiry: string;
+  days: number;
+  call: number;
+  put: number;
+  sigma: number;
+  logo: string | null;
+}
+
+export function summarizeOption(m: OptionModel): OptionCard | null {
+  const r = runOption(m);
+  if (!r.valid) return null;
+  return {
+    name: (m.name || m.ticker).slice(0, 48),
+    ticker: m.ticker.slice(0, 10),
+    type: m.type,
+    S: m.S,
+    K: m.K,
+    expiry: m.expiry,
+    days: r.days,
+    call: r.result.call,
+    put: r.result.put,
+    sigma: m.sigma,
+    logo: m.logo?.startsWith(LOGO_PREFIX) ? m.logo.slice(LOGO_PREFIX.length) : null,
+  };
+}
+
+export function optionCardQuery(c: OptionCard): string {
+  const q = new URLSearchParams({
+    k: "o",
+    n: c.name,
+    t: c.ticker,
+    ty: c.type,
+    S: c.S.toFixed(2),
+    K: c.K.toFixed(2),
+    e: c.expiry,
+    d: String(c.days),
+    c: c.call.toFixed(2),
+    p: c.put.toFixed(2),
+    v: c.sigma.toFixed(4),
+  });
+  if (c.logo) q.set("l", c.logo);
+  return q.toString();
+}
+
+export function readOptionCard(q: URLSearchParams): OptionCard | null {
+  if (q.get("k") !== "o" || !q.get("n")) return null;
+  const n = (k: string) => Number(q.get(k));
+  const vals = { S: n("S"), K: n("K"), days: n("d"), call: n("c"), put: n("p"), sigma: n("v") };
+  if (!Object.values(vals).every(Number.isFinite) || !(vals.S > 0) || !(vals.K > 0)) return null;
+  const expiry = q.get("e") ?? "";
+  return {
+    ...vals,
+    name: q.get("n")!.slice(0, 48),
+    ticker: (q.get("t") ?? "").slice(0, 10),
+    type: q.get("ty") === "put" ? "put" : "call",
+    expiry: /^\d{4}-\d{2}-\d{2}$/.test(expiry) ? expiry : "",
+    logo: logoUrlFor(q.get("l")) ? q.get("l") : null,
   };
 }

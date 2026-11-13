@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import { PageShell } from "@/components/PageShell";
 import { EX } from "@/lib/example";
+import { blackScholes } from "@/lib/options";
+
+const BS = blackScholes({ S: 100, K: 105, T: 0.5, r: 0.045, q: 0, sigma: 0.25 });
+const $ = (n: number) => `$${n.toFixed(2)}`;
 
 export const metadata: Metadata = {
-  title: "Common DCF interview questions | Valora",
-  description: "The DCF questions that come up in investment banking, M&A and valuation interviews, answered with real numbers.",
+  title: "Common valuation interview questions | Valora",
+  description: "The DCF and options questions that come up in investment banking, sales and trading and valuation interviews, answered with real numbers.",
 };
 
 export default function Page() {
@@ -123,14 +127,93 @@ export default function Page() {
     ],
   ];
 
+  const OQA: [string, React.ReactNode][] = [
+    [
+      "What's the difference between a call and a put?",
+      <p>
+        A call is the right to buy a stock at the strike price before expiration; a put is the right to sell at the strike. A call buyer
+        profits if the stock rises above the strike plus the premium paid. A put buyer profits if it falls below the strike minus the
+        premium. Neither has to exercise, so the most a buyer can lose is the premium.
+      </p>,
+    ],
+    [
+      "What are the inputs to Black-Scholes?",
+      <p>
+        Six: the share price, the strike, time to expiration, the risk-free rate, the dividend yield and volatility. Everything but
+        volatility can be looked up, so when people disagree about an option&rsquo;s price, they&rsquo;re really disagreeing about
+        volatility.
+      </p>,
+    ],
+    [
+      "What happens to a call and a put when volatility rises?",
+      <p>
+        Both go up. A buyer&rsquo;s loss is capped at the premium, but the gain isn&rsquo;t, so more movement in either direction only
+        helps. In Valora&rsquo;s example (a {$(100)} stock, {$(105)} strike, six months, 25% volatility), the call is worth {$(BS.call)} and
+        the put {$(BS.put)}. Vega is {BS.callGreeks.vega.toFixed(2)} for both, so one more point of volatility adds about{" "}
+        {$(BS.callGreeks.vega)} to each.
+      </p>,
+    ],
+    [
+      "What is delta, and what does a delta of 0.5 mean?",
+      <p>
+        Delta is how much the option&rsquo;s price changes for a $1 move in the stock. A delta of 0.5 means the option moves about 50 cents
+        per dollar, so one contract behaves like holding 50 shares. Calls have delta between 0 and 1, puts between −1 and 0. An
+        at-the-money option has a delta near 0.5 (or −0.5), and it moves toward 1 or 0 as the option goes deeper in or out of the money.
+        Delta is also a rough estimate of the chance the option finishes in the money.
+      </p>,
+    ],
+    [
+      "Explain theta. Why do options lose value over time?",
+      <p>
+        Theta is the change in an option&rsquo;s price as one day passes. Most of an option&rsquo;s value before expiration is time value:
+        the chance the stock moves in your favor. With less time left, that chance shrinks, so the option loses value even if the stock
+        doesn&rsquo;t move. The decay speeds up close to expiration, especially for at-the-money options.
+      </p>,
+    ],
+    [
+      "What is put-call parity?",
+      <p>
+        For a call and a put with the same strike and expiration, call − put = stock price − present value of the strike (adjusted for
+        dividends). If it didn&rsquo;t hold, you could buy the cheap side, sell the expensive side and lock in a riskless profit. It also
+        means that once you know the call price, the put price follows.
+      </p>,
+    ],
+    [
+      "What's the difference between implied and historical volatility?",
+      <p>
+        Historical volatility measures how much the stock actually moved, usually the standard deviation of daily returns over the past
+        year, annualized by multiplying by √252. Implied volatility is the volatility that makes Black-Scholes match an option&rsquo;s
+        market price, so it&rsquo;s what the market expects going forward. Implied is often higher than historical before earnings or
+        other known events.
+      </p>,
+    ],
+    [
+      "What are the main limitations of Black-Scholes?",
+      <p>
+        It assumes volatility and rates stay constant, returns are normally distributed and the option is only exercised at expiration.
+        In reality volatility changes and differs by strike (the volatility smile), big moves happen more often than a normal distribution
+        allows, and US options can be exercised early. Traders still use it, mostly as a common language for quoting prices in terms of
+        implied volatility.
+      </p>,
+    ],
+  ];
+
   return (
     <PageShell>
-      <h1>Common DCF interview questions</h1>
+      <h1>Common valuation interview questions</h1>
       <p className="lede">
-        The questions that come up in investment banking, M&amp;A and valuation interviews. Where it helps, the answers use the numbers from
-        Valora&rsquo;s Apple model so you can see them in context.
+        The questions that come up in investment banking, sales and trading and valuation interviews. Where it helps, the answers use
+        Valora&rsquo;s own examples so you can see the numbers in context.
       </p>
+      <h2 id="dcf">Discounted cash flow</h2>
       {QA.map(([q, a]) => (
+        <details key={q}>
+          <summary>{q}</summary>
+          <div>{a}</div>
+        </details>
+      ))}
+      <h2 id="options">Options and Black-Scholes</h2>
+      {OQA.map(([q, a]) => (
         <details key={q}>
           <summary>{q}</summary>
           <div>{a}</div>

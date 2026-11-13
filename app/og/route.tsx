@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { logoUrlFor, readCard } from "@/lib/og";
+import { logoUrlFor, readCard, readOptionCard, type OptionCard } from "@/lib/og";
 
 // The preview image LinkedIn, Slack, iMessage and others show for a link.
 export const runtime = "nodejs";
@@ -106,8 +106,10 @@ function Footer({ host, note }: { host: string; note: string }) {
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const host = process.env.VERCEL_PROJECT_PRODUCTION_URL ?? url.host;
-  const card = readCard(url.searchParams);
   const opts = { width: 1200, height: 630, fonts: await loadFonts() };
+  const optCard = readOptionCard(url.searchParams);
+  if (optCard) return new ImageResponse(<OptionImage card={optCard} logo={await logoData(optCard.logo)} host={host} />, opts);
+  const card = readCard(url.searchParams);
 
   if (!card) {
     return new ImageResponse(
@@ -198,5 +200,72 @@ export async function GET(req: Request) {
       </div>
     ),
     opts,
+  );
+}
+
+const CALL = "#3f8a55";
+const PUT = "#2b5aa0";
+const longDate = (d: string) =>
+  d ? new Date(d + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }) : "";
+
+function OptionImage({ card, logo, host }: { card: OptionCard; logo: string | null; host: string }) {
+  const initial = (card.name.trim()[0] ?? "?").toUpperCase();
+  const box = (t: "call" | "put") => {
+    const sel = card.type === t;
+    const color = t === "call" ? CALL : PUT;
+    return (
+      <div
+        style={{
+          display: "flex", flexDirection: "column", flex: 1, padding: "22px 30px 26px", background: SHEET,
+          border: `${sel ? 4 : 2}px solid ${sel ? INK : RULE}`, borderTop: `10px solid ${color}`, borderRadius: 14,
+        }}
+      >
+        <div style={{ display: "flex", fontSize: 28, fontWeight: 800, color }}>{t === "call" ? "Call" : "Put"}</div>
+        <div style={{ display: "flex", fontSize: 96, fontFamily: "Plex Mono", letterSpacing: -5, lineHeight: 1.05 }}>{money(t === "call" ? card.call : card.put)}</div>
+        <div style={{ display: "flex", fontSize: 22, color: SOFT }}>{`${money((t === "call" ? card.call : card.put) * 100)} per contract`}</div>
+      </div>
+    );
+  };
+  return (
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: PAPER, fontFamily: "Schibsted", color: INK }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "44px 64px 0" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+          {logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logo} width={96} height={96} style={{ borderRadius: 20, border: `2px solid ${RULE}`, background: "#ffffff", padding: 11, objectFit: "contain" }} alt="" />
+          ) : (
+            <div style={{ width: 96, height: 96, borderRadius: 20, background: INK, color: SHEET, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 50, fontWeight: 800 }}>
+              {initial}
+            </div>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", maxWidth: 700 }}>
+            <div style={{ display: "flex", fontSize: 50, fontWeight: 800, letterSpacing: -2, lineHeight: 1.04 }}>{card.name}</div>
+            <div style={{ display: "flex", gap: 26, fontSize: 23, color: FAINT, fontFamily: "Plex Mono", marginTop: 8 }}>
+              <div style={{ display: "flex", color: INK }}>{card.ticker}</div>
+              <div style={{ display: "flex" }}>{`Strike ${money(card.K)}`}</div>
+              <div style={{ display: "flex" }}>{`Expires ${longDate(card.expiry)}`}</div>
+            </div>
+          </div>
+        </div>
+        <Brand size={40} />
+      </div>
+      <div style={{ display: "flex", flex: 1, alignItems: "center", gap: 24, padding: "0 64px" }}>
+        {box("call")}
+        {box("put")}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, width: 250 }}>
+          {[
+            ["Share price", money(card.S)],
+            ["Volatility", `${(card.sigma * 100).toFixed(1)}%`],
+            ["Days left", String(card.days)],
+          ].map(([k, v]) => (
+            <div key={k} style={{ display: "flex", flexDirection: "column", borderLeft: `3px solid ${RULE}`, paddingLeft: 14 }}>
+              <div style={{ display: "flex", fontSize: 20, color: SOFT }}>{k}</div>
+              <div style={{ display: "flex", fontSize: 34, fontFamily: "Plex Mono", letterSpacing: -1 }}>{v}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <Footer host={host} note="Black-Scholes option pricing. Open it and change any input." />
+    </div>
   );
 }

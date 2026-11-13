@@ -22,7 +22,7 @@ export function Menu({
   inputs?: DcfInputs;
   canExport?: boolean;
   scenario?: ScenarioId;
-  /** Set on the options page. Sharing and Excel for options come later. */
+  /** Set on the options page: share and download the option instead of a DCF. */
   optionModel?: OptionModel | null;
 }) {
   const onOptions = optionModel !== undefined;
@@ -34,7 +34,7 @@ export function Menu({
   const close = () => setPhase((p) => (p === "open" ? (reduced() ? "closed" : "closing") : p));
   const toggle = () => {
     if (phase === "open") return close();
-    setAvailable(onOptions ? false : inputs ? canExport : !!loadSession()?.inputs);
+    setAvailable(onOptions ? !!optionModel : inputs ? canExport : !!loadSession()?.inputs);
     setPhase("open");
   };
   const [status, setStatus] = useState<string | null>(null);
@@ -69,9 +69,16 @@ export function Menu({
   const model = () => inputs ?? loadSession()?.inputs ?? null;
 
   const share = async () => {
-    const m = model();
-    if (!m) return;
-    const url = await shareUrl(publicOrigin(), m);
+    let url: string;
+    if (onOptions) {
+      if (!optionModel) return;
+      const { optionShareUrl } = await import("@/lib/optionShare");
+      url = await optionShareUrl(publicOrigin(), optionModel);
+    } else {
+      const m = model();
+      if (!m) return;
+      url = await shareUrl(publicOrigin(), m);
+    }
     try {
       await navigator.clipboard.writeText(url);
       setStatus("Link copied");
@@ -85,19 +92,27 @@ export function Menu({
     close();
     setStatus("Building spreadsheet");
     try {
-      const [{ default: ExcelJS }, { buildWorkbook, workbookName }] = await Promise.all([
-        import("exceljs"),
-        import("@/lib/excel"),
-      ]);
-      const m = model();
-      if (!m) throw new Error("no model");
-      const buf = await buildWorkbook(ExcelJS, m, scenario).xlsx.writeBuffer();
+      const { default: ExcelJS } = await import("exceljs");
+      let buf: ArrayBuffer;
+      let fileName: string;
+      if (onOptions) {
+        if (!optionModel) throw new Error("no option");
+        const { buildOptionWorkbook, optionWorkbookName } = await import("@/lib/optionsExcel");
+        buf = await buildOptionWorkbook(ExcelJS, optionModel).xlsx.writeBuffer();
+        fileName = optionWorkbookName(optionModel);
+      } else {
+        const { buildWorkbook, workbookName } = await import("@/lib/excel");
+        const m = model();
+        if (!m) throw new Error("no model");
+        buf = await buildWorkbook(ExcelJS, m, scenario).xlsx.writeBuffer();
+        fileName = workbookName(m);
+      }
       const url = URL.createObjectURL(
         new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
       );
       const a = document.createElement("a");
       a.href = url;
-      a.download = workbookName(m);
+      a.download = fileName;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
       setStatus("Spreadsheet downloaded");
@@ -139,7 +154,7 @@ export function Menu({
           }}
         >
           <div className="menu-group">
-            <div className="menu-label">This model</div>
+            <div className="menu-label">{onOptions ? "This option" : "This model"}</div>
             <button role="menuitem" className="menu-item" onClick={share} disabled={!available}>
               Copy share link
             </button>
@@ -150,6 +165,7 @@ export function Menu({
           <div className="menu-group">
             <div className="menu-label">Learn</div>
             {item("/learn/how-a-dcf-works", "How a DCF works")}
+            {item("/learn/black-scholes", "How Black-Scholes works")}
             {item("/learn/glossary", "Glossary")}
             {item("/learn/interview-questions", "Common interview questions")}
           </div>

@@ -663,3 +663,5 @@ a.inst:hover .inst-go { background: var(--green); border-color: var(--green); }
 .ts-ticker { font-family: var(--mono); font-weight: 600; }
 .ts-name { color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ts-opt.is-active .ts-name { color: var(--ink); }
+
+.greeks.compact { min-width: 0; }
