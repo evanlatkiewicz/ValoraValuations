@@ -1,4 +1,5 @@
 "use client";
+import { MARK_GREEN, MARK_PATH, MARK_VIEWBOX } from "@/lib/mark";
 
 import { useState, type ReactNode } from "react";
 import type { Level } from "@/lib/checks";
@@ -184,15 +185,12 @@ export function Field({
   );
 }
 
-/** The Valora mark: five bars getting shorter, which is what discounting does. */
+/** The Valora mark: a white V on forest green. */
 export function Mark({ size = 26 }: { size?: number }) {
-  const bars = [1, 0.82, 0.67, 0.55, 0.45];
   return (
-    <svg width={size} height={size} viewBox="0 0 26 26" aria-hidden>
-      <rect x="0.75" y="0.75" width="24.5" height="24.5" rx="2" fill="var(--sheet)" stroke="var(--ink)" strokeWidth="1.5" />
-      {bars.map((h, i) => (
-        <rect key={i} x={4 + i * 3.8} y={21 - 16 * h} width="2.4" height={16 * h} fill={i === 0 ? "var(--green)" : "var(--ink)"} />
-      ))}
+    <svg width={size} height={size} viewBox={MARK_VIEWBOX} aria-hidden>
+      <rect x="180" y="197" width="900" height="900" rx="120" fill={MARK_GREEN} />
+      <path d={MARK_PATH} fill="#fff" />
     </svg>
   );
 }

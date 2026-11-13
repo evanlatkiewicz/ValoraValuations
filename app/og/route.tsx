@@ -1,3 +1,4 @@
+import { MARK_GREEN, MARK_PATH, MARK_VIEWBOX } from "@/lib/mark";
 import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -52,13 +53,10 @@ const money = (n: number) =>
   `${n < 0 ? "−" : ""}$${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 function Mark({ size }: { size: number }) {
-  const bars = [1, 0.82, 0.67, 0.55, 0.45];
   return (
-    <svg width={size} height={size} viewBox="0 0 26 26">
-      <rect x="0.75" y="0.75" width="24.5" height="24.5" rx="2" fill={SHEET} stroke={INK} strokeWidth="1.5" />
-      {bars.map((h, i) => (
-        <rect key={i} x={4 + i * 3.8} y={21 - 16 * h} width="2.4" height={16 * h} fill={i === 0 ? GREEN : INK} />
-      ))}
+    <svg width={size} height={size} viewBox={MARK_VIEWBOX}>
+      <rect x="180" y="197" width="900" height="900" rx="120" fill={MARK_GREEN} />
+      <path d={MARK_PATH} fill="#fff" />
     </svg>
   );
 }
