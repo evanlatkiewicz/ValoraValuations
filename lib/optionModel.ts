@@ -18,7 +18,7 @@ export interface OptionModel {
   sigma: number; // volatility used
   histVol: number | null; // one-year historical volatility, if known
   histDays: number | null;
-  treasury: number; // 10-year Treasury yield as quoted (bond-equivalent)
+  treasury: number; // Treasury yield for the option's life, as quoted (bond-equivalent)
   treasuryDate: string | null;
   q: number; // dividend yield
   dps: number | null; // annual dividends per share, if known

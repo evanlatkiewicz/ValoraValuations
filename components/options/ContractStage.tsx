@@ -2,6 +2,8 @@
 
 import type { OptCtx } from "./OptionsTool";
 import { OptLive } from "./OptLive";
+import { YieldCurve } from "./YieldCurve";
+import { matchedRate, rateNote } from "@/lib/optionRates";
 import { Field, NumInput } from "../ui";
 import { worstLevelFor } from "@/lib/checks";
 import { pct, price } from "@/lib/format";
@@ -15,6 +17,7 @@ export function ContractStage({ ctx }: { ctx: OptCtx }) {
   const strikes = [-0.1, -0.05, 0, 0.05, 0.1].map((d) => ({ d, k: roundStrike(m.S * (1 + d)) }));
   const expiries = [1, 3, 6, 12].map((mo) => ({ mo, date: expiryIn(m.valuationDate, mo) }));
   const latest = market && market.ticker === m.ticker ? market.last : null;
+  const matched = rf ? matchedRate(rf, m.valuationDate, m.expiry) : null;
 
   return (
     <div className="bench wide">
@@ -127,7 +130,7 @@ export function ContractStage({ ctx }: { ctx: OptCtx }) {
           />
           <Field
             label="Risk-free rate"
-            help="10-year Treasury yield, as quoted."
+            help="Treasury yield for the option's life, as quoted."
             input={<NumInput kind="pct" label="Risk-free rate" value={m.treasury} onChange={(n) => set({ treasury: n }, ["treasury"])} />}
             notes={
               <>
@@ -135,14 +138,20 @@ export function ContractStage({ ctx }: { ctx: OptCtx }) {
                 <span className="ref">
                   Black-Scholes uses continuous compounding: 2 × ln(1 + {pct(m.treasury, 2)} / 2) = {pct(continuousRate(m.treasury), 2)}.
                 </span>
-                {rf?.live && Math.abs(rf.rate - m.treasury) > 0.00005 && (
+                {rf && (rf.curve || rf.live) && Math.abs(matched!.treasury - m.treasury) > 0.00005 && (
                   <span className="market-note">
-                    <button className="btn ghost small" onClick={() => set({ treasury: rf.rate, treasuryDate: rf.date })}>Use latest rate ({pct(rf.rate, 2)})</button>
+                    <button
+                      className="btn ghost small"
+                      onClick={() => set({ ...matched!, sources: { ...m.sources, treasury: rateNote(rf, m.valuationDate, m.expiry) } })}
+                    >
+                      Use the matching Treasury yield ({pct(matched!.treasury, 2)})
+                    </button>
                   </span>
                 )}
               </>
             }
           />
+          {rf?.curve && <YieldCurve curve={rf.curve} years={run.T} used={m.treasury} />}
           <Field
             label="Dividend yield"
             help="Dividends a year divided by the share price."

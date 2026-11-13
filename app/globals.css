@@ -665,3 +665,7 @@ a.inst:hover .inst-go { background: var(--green); border-color: var(--green); }
 .ts-opt.is-active .ts-name { color: var(--ink); }
 
 .greeks.compact { min-width: 0; }
+
+.curve-box { max-width: 620px; margin: 4px 0 22px; background: var(--sheet); border: 1.5px solid var(--rule-strong); border-radius: 6px; padding: 10px 14px 4px; }
+.curve-head { font-size: var(--step--1); color: var(--ink-soft); }
+.curve-box svg { display: block; width: 100%; height: auto; }

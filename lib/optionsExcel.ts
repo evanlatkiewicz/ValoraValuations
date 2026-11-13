@@ -109,7 +109,7 @@ export function buildOptionWorkbook(ExcelJS: ExcelJS, m: OptionModel) {
   label(7, "Valuation date"); input("C7", asDate(m.valuationDate), DATE);
   label(8, "Expiration date"); input("C8", asDate(m.expiry), DATE);
   label(9, "Volatility (σ), per year"); input("C9", m.sigma, PCT); note(9, m.sources.sigma ?? "");
-  label(10, "10-year Treasury yield, as quoted"); input("C10", m.treasury, PCT); note(10, m.sources.treasury ?? "");
+  label(10, "Treasury yield for the option's life, as quoted"); input("C10", m.treasury, PCT); note(10, m.sources.treasury ?? "");
   label(11, "Dividend yield (q)"); input("C11", m.q, PCT); note(11, m.sources.q ?? "");
 
   section(13, "Converted for the formula");

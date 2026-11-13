@@ -42,7 +42,7 @@ export default function Page() {
         <li><b>Share price (S).</b> Today&rsquo;s price of the stock.</li>
         <li><b>Strike (K).</b> The price written into the contract.</li>
         <li><b>Time to expiration (T).</b> In years. Ninety days is 90 / 365 = 0.25.</li>
-        <li><b>Risk-free rate (r).</b> A Treasury yield, converted to continuous compounding.</li>
+        <li><b>Risk-free rate (r).</b> The Treasury yield for the option's life, converted to continuous compounding. A 3-month option uses the 3-month bill, not the 10-year note.</li>
         <li><b>Dividend yield (q).</b> Dividends pay shareholders, not option holders, so they lower calls and raise puts.</li>
         <li>
           <b>Volatility (σ).</b> How much the stock is expected to move in a year, as a standard deviation of returns. It&rsquo;s the

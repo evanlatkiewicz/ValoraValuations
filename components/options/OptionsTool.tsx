@@ -12,7 +12,8 @@ import { starRating, type Check } from "@/lib/checks";
 import { fmtDate, type MarketData } from "@/lib/market";
 import { historicalVol } from "@/lib/options";
 import { expiryIn, optionChecks, roundStrike, runOption, todayISO, type OptionModel, type OptionRun } from "@/lib/optionModel";
-import type { RiskFree } from "@/lib/rates";
+import type { Rates } from "@/lib/curve";
+import { matchedRate, rateNote } from "@/lib/optionRates";
 import { FALLBACK_RF } from "@/lib/rates";
 import { price as fmtPrice } from "@/lib/format";
 import { ContractStage } from "./ContractStage";
@@ -27,7 +28,7 @@ export interface OptCtx {
   checks: Check[];
   stars: number;
   market: MarketData | null;
-  rf: RiskFree | null;
+  rf: Rates | null;
   set: (patch: Partial<OptionModel>, fields?: string[]) => void;
   go: (s: OptStage) => void;
 }
@@ -52,6 +53,7 @@ const STAGES: { id: OptStage; label: string }[] = [
 
 const KEY = "valora:options";
 
+
 export function OptionsTool({ initial }: { initial?: OptionModel | null }) {
   const [m, setM] = useState<OptionModel | null>(initial ?? null);
   const [baseline, setBaseline] = useState<OptionModel | null>(initial ?? null);
@@ -61,7 +63,7 @@ export function OptionsTool({ initial }: { initial?: OptionModel | null }) {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [market, setMarket] = useState<MarketData | null>(null);
-  const [rf, setRf] = useState<RiskFree | null>(null);
+  const [rf, setRf] = useState<Rates | null>(null);
   const [restored, setRestored] = useState(false);
 
   useEffect(() => {
@@ -135,8 +137,7 @@ export function OptionsTool({ initial }: { initial?: OptionModel | null }) {
           sigma: hv ? Math.round(hv.sigma * 10000) / 10000 : 0.3,
           histVol: hv?.sigma ?? null,
           histDays: hv?.n ?? null,
-          treasury: rate.rate,
-          treasuryDate: rate.date,
+          ...matchedRate(rate, today, expiryIn(today, 3)),
           q: dps ? Math.round((dps / S) * 10000) / 10000 : 0,
           dps,
           marketPrice: null,
@@ -145,7 +146,7 @@ export function OptionsTool({ initial }: { initial?: OptionModel | null }) {
             sigma: hv
               ? `Historical volatility: the standard deviation of ${hv.n} daily returns over the past year, times the square root of 252 trading days.`
               : "Not enough price history, so this starts at 30%. Enter your own.",
-            treasury: rate.live && rate.date ? `10-year Treasury yield on ${fmtDate(rate.date)}, from FRED.` : "Valora's default. Check today's 10-year Treasury yield.",
+            treasury: rateNote(rate, today, expiryIn(today, 3)),
             q: dps ? `${fmtPrice(dps)} a share in dividends in ${dv.year}, divided by the share price.` : "No dividend found in SEC filings, so this starts at zero.",
           },
         };
@@ -165,14 +166,25 @@ export function OptionsTool({ initial }: { initial?: OptionModel | null }) {
     [loading, rf],
   );
 
-  const set = useCallback((patch: Partial<OptionModel>, fields: string[] = []) => {
-    setM((prev) => {
-      if (!prev) return prev;
-      const sources = { ...prev.sources };
-      for (const f of fields) if (sources[f] && !sources[f].startsWith("You changed")) sources[f] = `You changed this. Original: ${sources[f]}`;
-      return { ...prev, ...patch, sources };
-    });
-  }, []);
+  const set = useCallback(
+    (patch: Partial<OptionModel>, fields: string[] = []) => {
+      setM((prev) => {
+        if (!prev) return prev;
+        const sources = { ...prev.sources, ...(patch.sources ?? {}) };
+        for (const f of fields) if (sources[f] && !sources[f].startsWith("You changed")) sources[f] = `You changed this. Original: ${sources[f]}`;
+        const next = { ...prev, ...patch, sources };
+        // A new expiration means a different maturity on the curve. Follow it, unless the rate was typed in by hand.
+        const datesMoved = patch.expiry !== undefined || patch.valuationDate !== undefined;
+        const typed = sources.treasury?.startsWith("You changed");
+        if (datesMoved && !typed && !("treasury" in patch) && rf?.curve) {
+          Object.assign(next, matchedRate(rf, next.valuationDate, next.expiry));
+          sources.treasury = rateNote(rf, next.valuationDate, next.expiry);
+        }
+        return next;
+      });
+    },
+    [rf],
+  );
 
   const go = useCallback((s: OptStage) => {
     setStage(s);
