@@ -434,8 +434,9 @@ h1, h2, h3, p { margin: 0; }
 }
 
 /* ---------- Scenarios ---------- */
-.case-switch { display: inline-flex; border: 1.5px solid var(--ink); border-radius: 999px; padding: 3px; background: var(--paper); gap: 2px; }
-.case-btn { border: none; background: transparent; border-radius: 999px; padding: 6px 16px; font-weight: 700; cursor: pointer; color: var(--ink-soft); }
+.case-switch { display: inline-flex; border: 1.5px solid var(--ink); border-radius: 3px; overflow: hidden; background: var(--sheet); }
+.case-btn { border: none; background: transparent; border-radius: 0; padding: 7px 16px; font-weight: 700; cursor: pointer; color: var(--ink-soft); }
+.case-btn + .case-btn { border-left: 1.5px solid var(--ink); }
 .case-btn:hover { color: var(--ink); background: var(--paper-deep); }
 .case-btn[aria-pressed="true"] { color: var(--sheet); }
 .case-btn.case-bear[aria-pressed="true"] { background: var(--red); }
