@@ -758,3 +758,5 @@ a.inst:hover .inst-go { background: var(--green); border-color: var(--green); }
   .grid-table:has(th:nth-child(6)) td.label { min-width: 96px; }
   .grid-table th, .grid-table td { padding: 6px 4px; }
 }
+.google-btn { display: inline-flex; align-items: center; gap: 10px; background: var(--sheet); color: var(--ink); border-color: var(--ink); padding: 10px 18px; }
+.google-btn:hover { background: var(--paper-deep); border-color: var(--ink); }

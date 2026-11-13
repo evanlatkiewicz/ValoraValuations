@@ -29,7 +29,7 @@ export function AccountPage() {
   if (!user) {
     return (
       <p className="callout">
-        <Link href="/login?next=/account">Sign in</Link> to see the models and option contracts you&rsquo;ve saved.
+        <Link href="/login?next=/account">Sign in with Google</Link> to see the models and option contracts you&rsquo;ve saved.
       </p>
     );
   }

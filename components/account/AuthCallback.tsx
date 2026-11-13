@@ -20,7 +20,7 @@ export function AuthCallback() {
       const { data } = await sb.auth.getSession();
       if (!data.session && code) {
         const { error } = await sb.auth.exchangeCodeForSession(code);
-        if (error) return setFailed("This sign-in link has expired or was already used. Request a new one.");
+        if (error) return setFailed("Sign-in didn't finish, or the link was already used.");
       }
       window.location.replace(next);
     })();
@@ -30,7 +30,7 @@ export function AuthCallback() {
       <div className="callout">
         <p>{failed}</p>
         <p style={{ marginTop: 8 }}>
-          <Link href="/login">Request a new sign-in link</Link>. Open it in the same browser you requested it from.
+          <Link href="/login">Try signing in again</Link>.
         </p>
       </div>
     );
