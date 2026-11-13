@@ -669,3 +669,14 @@ a.inst:hover .inst-go { background: var(--green); border-color: var(--green); }
 .curve-box { max-width: 620px; margin: 4px 0 22px; background: var(--sheet); border: 1.5px solid var(--rule-strong); border-radius: 6px; padding: 10px 14px 4px; }
 .curve-head { font-size: var(--step--1); color: var(--ink-soft); }
 .curve-box svg { display: block; width: 100%; height: auto; }
+
+/* ---------- Peer comps ---------- */
+.comps { border-collapse: collapse; margin-top: 12px; font-size: var(--step--1); min-width: 620px; width: 100%; max-width: 900px; }
+.comps th, .comps td { padding: 8px 12px; border-bottom: 1px solid var(--rule); text-align: left; white-space: nowrap; }
+.comps th { font-weight: 600; color: var(--ink-soft); border-bottom: 1.5px solid var(--ink); }
+.comps .num { text-align: right; font-family: var(--mono); }
+.comps td:first-child { white-space: normal; }
+.comps .co-ticker { margin-right: 6px; }
+.comps tr.is-self td { background: var(--paper-deep); font-weight: 600; }
+.comps tr.is-median td { border-top: 1.5px solid var(--ink); font-weight: 700; }
+.comps tr.is-model td { font-weight: 700; color: var(--green); }

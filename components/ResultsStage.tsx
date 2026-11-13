@@ -7,6 +7,7 @@ import { Dot, Stars } from "./ui";
 import { C_FCF, C_PV, FcfChart, Waterfall } from "./charts";
 import { PriceChart } from "./PriceChart";
 import { ScenarioSection } from "./ScenarioSection";
+import { PeersSection } from "./PeersSection";
 import { SCENARIO_LABEL } from "@/lib/scenarios";
 import { reverseDcf, sensitivity } from "@/lib/dcf";
 import { mult, pct, price, signedPct } from "@/lib/format";
@@ -151,6 +152,8 @@ export function ResultsStage({ ctx }: { ctx: Ctx }) {
             </p>
           </div>
         </div>
+
+        <PeersSection ctx={ctx} />
 
         <h2 className="section-h">Sensitivity</h2>
         <p className="section-p">

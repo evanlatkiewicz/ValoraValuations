@@ -37,3 +37,26 @@ describe("options share links", () => {
     expect(readOptionCard(new URLSearchParams("n=x&v=1&p=2"))).toBeNull(); // a DCF card isn't an options card
   });
 });
+
+import { optionChecks, runOption } from "./optionModel";
+
+describe("earnings check", () => {
+  const check = (patch: Partial<OptionModel>) => {
+    const m = { ...M, marketPrice: null, ...patch };
+    return optionChecks(m, runOption(m)).find((c) => c.id === "earnings");
+  };
+  it("warns when earnings fall before expiration and volatility is just historical", () => {
+    expect(check({ earnings: { date: "2027-01-29", epsEstimated: 2.9 } })?.level).toBe("warn");
+  });
+  it("is fine when earnings come after expiration or volatility was raised", () => {
+    expect(check({ earnings: { date: "2027-04-30", epsEstimated: null } })?.level).toBe("good");
+    expect(check({ earnings: { date: "2027-01-29", epsEstimated: null }, sigma: 0.32 })?.level).toBe("good");
+  });
+  it("is skipped when no date is known", () => {
+    expect(check({ earnings: null })).toBeUndefined();
+  });
+  it("survives a share link", async () => {
+    const m = { ...M, earnings: { date: "2027-01-29", epsEstimated: 2.94 } };
+    expect((await decodeOption(await encodeOption(m)))?.earnings).toEqual(m.earnings);
+  });
+});

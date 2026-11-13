@@ -37,7 +37,9 @@ export async function decodeOption(token: string): Promise<OptionModel | null> {
       ["histVol", "histDays", "dps", "marketPrice"].every((k) => numOrNull(m[k as keyof OptionModel])) &&
       [m.priceDate, m.expiry, m.valuationDate].every((d) => typeof d === "string" && DATE.test(d)) &&
       (m.treasuryDate === null || (typeof m.treasuryDate === "string" && DATE.test(m.treasuryDate)));
-    if (!ok) return null;
+    const e = m.earnings;
+    const okEarnings = e === undefined || e === null || (typeof e?.date === "string" && DATE.test(e.date) && numOrNull(e.epsEstimated));
+    if (!ok || !okEarnings) return null;
     const sources: Record<string, string> = {};
     for (const [k, v] of Object.entries(m.sources ?? {})) if (typeof v === "string") sources[k] = v.slice(0, 400);
     const out: OptionModel = { ...m, name: m.name.slice(0, 80), sources };

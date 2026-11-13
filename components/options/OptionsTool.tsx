@@ -101,6 +101,19 @@ export function OptionsTool({ initial }: { initial?: OptionModel | null }) {
       .catch(() => null);
   }, [m?.ticker, market?.ticker]);
 
+  // Models saved before earnings dates existed: look the date up once.
+  useEffect(() => {
+    if (!m?.ticker || m.earnings !== undefined) return;
+    fetch(`/api/earnings?ticker=${encodeURIComponent(m.ticker)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        const add = (prev: OptionModel | null) => (prev && prev.ticker === m.ticker ? { ...prev, earnings: d?.next ?? null } : prev);
+        setM(add);
+        setBaseline(add);
+      })
+      .catch(() => null);
+  }, [m?.ticker, m?.earnings]);
+
   const load = useCallback(
     async (raw: string) => {
       const t = raw.trim().toUpperCase();
@@ -109,10 +122,11 @@ export function OptionsTool({ initial }: { initial?: OptionModel | null }) {
       setError(null);
       setLoading(`Getting ${t}'s prices`);
       try {
-        const [pr, dv, rate] = await Promise.all([
+        const [pr, dv, rate, er] = await Promise.all([
           fetch(`/api/prices?ticker=${encodeURIComponent(t)}`).then(async (r) => ({ ok: r.ok, body: await r.json() })),
           fetch(`/api/dividend?ticker=${encodeURIComponent(t)}`).then((r) => r.json()).catch(() => ({})),
           rf ? Promise.resolve(rf) : fetch("/api/rates").then((r) => r.json()).catch(() => FALLBACK_RF),
+          fetch(`/api/earnings?ticker=${encodeURIComponent(t)}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
         ]);
         if (!pr.ok) {
           setError(pr.body?.error ?? `Couldn't find prices for ${t}.`);
@@ -141,6 +155,7 @@ export function OptionsTool({ initial }: { initial?: OptionModel | null }) {
           q: dps ? Math.round((dps / S) * 10000) / 10000 : 0,
           dps,
           marketPrice: null,
+          earnings: er?.next ?? null,
           sources: {
             S: `Last close on ${fmtDate(md.last.d)}, from ${md.source}.`,
             sigma: hv

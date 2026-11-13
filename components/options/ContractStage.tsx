@@ -81,6 +81,11 @@ export function ContractStage({ ctx }: { ctx: OptCtx }) {
                   ))}
                 </span>
                 <span>{run.days} days from {fmtDate(m.valuationDate)}, or {run.T.toFixed(3)} years.</span>
+                {m.earnings?.date && m.earnings.date >= m.valuationDate && (
+                  <span className="ref">
+                    Next earnings report: {fmtDate(m.earnings.date)}, {m.earnings.date <= m.expiry ? "before" : "after"} this expiration.
+                  </span>
+                )}
               </>
             }
           />

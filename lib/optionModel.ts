@@ -23,6 +23,7 @@ export interface OptionModel {
   q: number; // dividend yield
   dps: number | null; // annual dividends per share, if known
   marketPrice: number | null; // what the option actually trades for, optional
+  earnings?: { date: string; epsEstimated: number | null } | null; // next scheduled report, if known
   sources: Record<string, string>;
 }
 
@@ -113,6 +114,21 @@ export function optionChecks(m: OptionModel, o: OptionRun): Check[] {
       const ratio = o.impliedVol / m.histVol;
       add("iv", "Implied vs. historical volatility", ratio > 0.6 && ratio < 1.6 ? "good" : "warn",
         `The market price implies ${pct(o.impliedVol, 1)} volatility, against ${pct(m.histVol, 1)} historically. ${ratio > 1.25 ? "The market expects bigger moves than the past year." : ratio < 0.8 ? "The market expects calmer trading than the past year." : "The market and history roughly agree."}`, ["marketPrice"]);
+    }
+  }
+
+  // Earnings before expiration: the stock usually jumps, so volatility should be higher than history
+  const e = m.earnings;
+  if (e?.date && e.date >= m.valuationDate) {
+    const when = new Date(e.date + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+    if (e.date > m.expiry) {
+      add("earnings", "Earnings", "good", `The next earnings report is ${when}, after this option expires.`, ["expiry"]);
+    } else if (m.marketPrice && o.impliedVol !== null) {
+      add("earnings", "Earnings", "good", `Earnings come out ${when}, before expiration. The implied volatility from your market price already reflects that.`, ["sigma"]);
+    } else if (m.histVol && m.sigma > m.histVol * 1.15) {
+      add("earnings", "Earnings", "good", `Earnings come out ${when}, before expiration, and your volatility is already above the past year's ${pct(m.histVol)}.`, ["sigma"]);
+    } else {
+      add("earnings", "Earnings", "warn", `${m.ticker} reports earnings ${when}, before this option expires. Stocks often jump on earnings, so the market usually prices in more volatility than the past year shows. Enter a market price to see how much.`, ["sigma", "expiry"]);
     }
   }
 
