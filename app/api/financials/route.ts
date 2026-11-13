@@ -23,7 +23,8 @@ export async function GET(req: Request) {
     if (res.status === 404) return fail(404, `${entry.title} has no financial data on file with the SEC.`);
     if (!res.ok) return fail(502, `The SEC didn't respond (status ${res.status}). Try again in a minute.`);
     const [json, rf] = await Promise.all([res.json(), fetchRiskFree()]);
-    const facts = trimFacts(json as CompanyFacts);
+    // The ticker list's name is the listed company's. Company facts sometimes carry a subsidiary's (Bank of America shows "BofA Finance LLC").
+    const facts = { ...trimFacts(json as CompanyFacts), entityName: entry.title };
     const book = finBook(facts);
     const fx = book && book.unit !== "USD" ? await fetchFx(book.unit) : null;
     return NextResponse.json(equityFromFacts(facts, ticker, rf, fx), {
