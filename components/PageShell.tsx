@@ -22,6 +22,7 @@ const NAV: { group: string; items: [string, string][] }[] = [
     items: [
       ["/about", "How Valora works"],
       ["/disclaimer", "Disclaimer"],
+      ["/privacy", "Privacy"],
       ["/contact", "Contact"],
     ],
   },

@@ -273,6 +273,7 @@ export function Menu({
             <div className="menu-label">About</div>
             {item("/about", "How Valora works")}
             {item("/disclaimer", "Disclaimer")}
+            {item("/privacy", "Privacy")}
             {item("/contact", "Contact")}
           </div>
         </div>
