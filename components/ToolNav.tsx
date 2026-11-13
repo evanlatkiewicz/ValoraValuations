@@ -11,7 +11,7 @@ export function ToolNav() {
     <nav className="tool-nav" aria-label="Instruments">
       {TOOLS.filter((t) => t.id !== "bonds").map((t) =>
         t.ready ? (
-          <Link key={t.id} href={t.href} className="tool-link" aria-current={path.startsWith(t.href) ? "page" : undefined}>
+          <Link key={t.id} href={t.href} className="tool-link" aria-current={path.startsWith(t.href) || (t.id === "dcf" && path.startsWith("/financials")) ? "page" : undefined}>
             {t.name}
           </Link>
         ) : (

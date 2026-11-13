@@ -43,9 +43,16 @@ describe("SEC loader", () => {
     expect(warnings.join(" ")).toMatch(/debt/i);
   });
 
-  it("explains why banks can't be loaded", () => {
-    expect(() => inputsFromFacts(load("JPM"), "JPM")).toThrow(SecDataError);
-    expect(() => inputsFromFacts(load("JPM"), "JPM")).toThrow(/banks/);
+  it("hands banks and insurers to the excess return model", () => {
+    for (const t of ["JPM", "GS", "MET", "WFC"]) {
+      let code: string | undefined;
+      try {
+        inputsFromFacts(load(t), t);
+      } catch (e) {
+        code = (e as SecDataError).code;
+      }
+      expect(code, t).toBe("financial");
+    }
   });
 
   it("leaves the share price blank for the user", () => {

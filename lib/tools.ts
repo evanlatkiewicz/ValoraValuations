@@ -15,7 +15,7 @@ export const TOOLS: Tool[] = [
     name: "Companies",
     method: "Discounted cash flow",
     href: "/dcf",
-    blurb: "Value a public company from its 10-K or 20-F: free cash flow, discount rate and terminal value, with bull, base and bear cases.",
+    blurb: "Value a public company from its 10-K or 20-F: free cash flow, discount rate and terminal value, with bull, base and bear cases. Banks, insurers and REITs use an excess return model.",
     ready: true,
   },
   {

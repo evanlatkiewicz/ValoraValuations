@@ -225,6 +225,12 @@ export default function Valora() {
     try {
       const res = await fetch(`/api/company?ticker=${encodeURIComponent(t)}`);
       const data = await res.json();
+      if (!res.ok && data.code === "financial") {
+        // Banks, insurers and REITs are valued on equity, in their own tool
+        setLoading(`${t} is a financial company. Opening the excess return model`);
+        window.location.href = `/financials?t=${encodeURIComponent(t)}`;
+        return;
+      }
       if (!res.ok) {
         setNotice({ tone: "error", text: data.error ?? "Something went wrong loading that ticker." });
         return;

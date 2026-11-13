@@ -699,3 +699,15 @@ a.inst:hover .inst-go { background: var(--green); border-color: var(--green); }
 .prose .saved-list { list-style: none; padding-left: 0; }
 .prose .saved-list li { margin: 0; }
 .prose a.btn { color: var(--sheet); text-decoration: none; }
+
+/* ---------- Financials model ---------- */
+.bridge { margin-top: 14px; display: grid; gap: 10px; }
+.bridge-row { display: grid; grid-template-columns: minmax(120px, 190px) minmax(0, 1fr) 92px; gap: 12px; align-items: center; font-size: var(--step--1); }
+.bridge-row.total { border-top: 1.5px solid var(--ink); padding-top: 10px; font-weight: 700; }
+.bridge-k { color: var(--ink-soft); }
+.bridge-row.total .bridge-k { color: var(--ink); }
+.bridge-track { position: relative; height: 18px; background: var(--paper); border-radius: 3px; }
+.bridge-bar { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+.bridge-price { position: absolute; top: -4px; bottom: -4px; border-left: 2px dashed var(--amber); }
+.bridge-v { text-align: right; font-family: var(--mono); }
+@media (max-width: 560px) { .bridge-row { grid-template-columns: 1fr 80px; } .bridge-track { grid-column: 1 / -1; grid-row: 2; } }

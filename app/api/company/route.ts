@@ -37,7 +37,11 @@ export async function GET(req: Request) {
       headers: { "Cache-Control": "public, s-maxage=21600, stale-while-revalidate=86400" },
     });
   } catch (e) {
-    if (e instanceof SecDataError) return fail(422, e.message);
+    if (e instanceof SecDataError) {
+      // Banks, insurers and REITs: the page hands these to the excess return model
+      if (e.code === "financial") return NextResponse.json({ error: e.message, code: "financial" }, { status: 422 });
+      return fail(422, e.message);
+    }
     console.error(e);
     return fail(502, "Couldn't reach the SEC right now. Try again in a minute.");
   }

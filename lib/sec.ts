@@ -7,7 +7,7 @@ import { MARKET } from "./companies";
 import { FALLBACK_RF, rfNote, type RiskFree } from "./rates";
 import type { DcfInputs, HistoricalYear, Source } from "./types";
 
-interface Fact {
+export interface Fact {
   start?: string;
   end: string;
   val: number;
@@ -38,7 +38,7 @@ export interface Fx {
   source: string;
 }
 
-type Taxonomy = "us-gaap" | "ifrs-full";
+export type Taxonomy = "us-gaap" | "ifrs-full";
 /** Which accounting taxonomy and currency a company reports its annual numbers in. */
 export interface Book {
   tax: Taxonomy;
@@ -46,7 +46,7 @@ export interface Book {
   form: string; // "10-K", "20-F" or "40-F"
 }
 
-const ANNUAL_FORMS = new Set(["10-K", "20-F", "40-F"]);
+export const ANNUAL_FORMS = new Set(["10-K", "20-F", "40-F"]);
 
 // How many ordinary shares one US-listed share (ADR) represents, for
 // well-known foreign companies. Filings count ordinary shares; the share
@@ -57,10 +57,15 @@ export const ADR_RATIOS: Record<string, number> = {
   SAP: 1, UL: 1, NVS: 1, RIO: 1, BHP: 2, TTE: 1, BTI: 1, NGG: 5, VOD: 10, MUFG: 1, SMFG: 5,
 };
 
-export class SecDataError extends Error {}
+export class SecDataError extends Error {
+  /** "financial" when the company should be valued with the equity (excess return) model instead. */
+  constructor(message: string, public code?: "financial" | "pre-revenue" | "no-annual") {
+    super(message);
+  }
+}
 
 const DAY = 86400000;
-const days = (a: string, b: string) => (Date.parse(b) - Date.parse(a)) / DAY;
+export const days = (a: string, b: string) => (Date.parse(b) - Date.parse(a)) / DAY;
 
 // Concept candidates in priority order. When several have data, the one with
 // the most recent fiscal year wins (companies switch tags over time).
@@ -113,6 +118,39 @@ const C = {
   netIncome: ["NetIncomeLoss", "ProfitLoss"],
 };
 
+// Financial companies: valued on equity, so these are what the excess return model reads.
+export const FIN = {
+  gaap: {
+    netIncome: ["NetIncomeLossAvailableToCommonStockholdersBasic", "NetIncomeLoss"],
+    equity: ["StockholdersEquity"],
+    preferred: ["PreferredStockValue", "PreferredStockValueOutstanding"],
+    dividends: ["PaymentsOfDividendsCommonStock", "PaymentsOfDividends"],
+    buybacks: ["PaymentsForRepurchaseOfCommonStock"],
+  },
+  ifrs: {
+    netIncome: ["ProfitLossAttributableToOwnersOfParent", "ProfitLoss"],
+    equity: ["EquityAttributableToOwnersOfParent"],
+    preferred: [] as string[],
+    dividends: ["DividendsPaidClassifiedAsFinancingActivities", "DividendsPaid"],
+    buybacks: ["PaymentsToAcquireOrRedeemEntitysShares"],
+  },
+  // Line items that tell a bank, an insurer and a REIT apart
+  markers: {
+    bank: ["Deposits", "InterestExpenseDeposits", "LoansAndLeasesReceivableNetReportedAmount", "Deposits"],
+    insurer: ["PremiumsEarnedNet", "LiabilityForFuturePolicyBenefits", "PolicyholderBenefitsAndClaimsIncurredNet"],
+    reit: ["RealEstateInvestmentPropertyNet", "RealEstateInvestmentPropertyAtCost"],
+  },
+};
+
+/** True when a company reports earnings and equity but no operating income, like a bank or insurer. */
+export function looksFinancial(f: CompanyFacts): boolean {
+  const has = (tax: Taxonomy, cs: string[], kind: "annual" | "instant") =>
+    cs.some((c) => Object.values(f.facts[tax]?.[c]?.units ?? {}).some((xs) => (kind === "annual" ? annual(xs) : instant(xs)).size > 0));
+  const gaap = has("us-gaap", FIN.gaap.netIncome, "annual") && has("us-gaap", FIN.gaap.equity, "instant");
+  const ifrs = has("ifrs-full", FIN.ifrs.netIncome, "annual") && has("ifrs-full", FIN.ifrs.equity, "instant");
+  return gaap || ifrs;
+}
+
 // The same ideas under IFRS. Some are summed rather than picked (see `sumAt`).
 const I = {
   revenue: ["Revenue", "RevenueFromContractsWithCustomers"],
@@ -143,14 +181,14 @@ const I = {
   netIncome: ["ProfitLossAttributableToOwnersOfParent", "ProfitLoss"],
 };
 
-const USD_BOOK: Book = { tax: "us-gaap", unit: "USD", form: "10-K" };
+export const USD_BOOK: Book = { tax: "us-gaap", unit: "USD", form: "10-K" };
 
-function series(f: CompanyFacts, concept: string, book: Book = USD_BOOK): Fact[] {
+export function series(f: CompanyFacts, concept: string, book: Book = USD_BOOK): Fact[] {
   return f.facts[book.tax]?.[concept]?.units?.[book.unit] ?? [];
 }
 
 /** Annual (roughly 12 month) values from annual reports, keyed by period end, latest filing wins. */
-function annual(facts: Fact[]): Map<string, Fact> {
+export function annual(facts: Fact[]): Map<string, Fact> {
   const out = new Map<string, Fact>();
   for (const e of facts) {
     if (!ANNUAL_FORMS.has(e.form ?? "") || !e.start) continue;
@@ -163,7 +201,7 @@ function annual(facts: Fact[]): Map<string, Fact> {
 }
 
 /** Point-in-time balance sheet values from annual reports, keyed by date. */
-function instant(facts: Fact[]): Map<string, Fact> {
+export function instant(facts: Fact[]): Map<string, Fact> {
   const out = new Map<string, Fact>();
   for (const e of facts) {
     if (!ANNUAL_FORMS.has(e.form ?? "") || e.start) continue;
@@ -173,7 +211,7 @@ function instant(facts: Fact[]): Map<string, Fact> {
   return out;
 }
 
-function latestKey(m: Map<string, Fact>): string {
+export function latestKey(m: Map<string, Fact>): string {
   return [...m.keys()].sort().at(-1) ?? "";
 }
 
@@ -249,7 +287,7 @@ export function filingUrl(cik: number, accn: string): string {
   return `https://www.sec.gov/Archives/edgar/data/${cik}/${accn.replace(/-/g, "")}/`;
 }
 
-function shares(f: CompanyFacts, baseEnd: string, book: Book): { value: number; note: string } | null {
+export function shares(f: CompanyFacts, baseEnd: string, book: Book): { value: number; note: string } | null {
   // Cover-page share count is the most current. Only use it if it's recent.
   const dei = f.facts.dei?.EntityCommonStockSharesOutstanding?.units?.shares ?? [];
   if (dei.length) {
@@ -291,6 +329,9 @@ function noRevenueReason(f: CompanyFacts, ticker: string): string {
   return `${name} doesn't report revenue under any of the standard labels Valora reads, so it can't be loaded automatically. You can still start from a blank model and enter the numbers from its annual report.`;
 }
 
+// Words that title case gets wrong
+const NAME_FIXES: Record<string, string> = { JPMORGAN: "JPMorgan", BLACKROCK: "BlackRock", PAYPAL: "PayPal", METLIFE: "MetLife", ATT: "AT&T", HP: "HP", IBM: "IBM", USA: "USA", US: "US" };
+
 /** "MICROSOFT CORP" -> "Microsoft Corp". Mixed-case names are left alone. */
 export function tidyName(raw: string, ticker = ""): string {
   // SEC names sometimes end in filing tags like " /NEW", " /DE/" or " \DE\".
@@ -306,6 +347,7 @@ export function tidyName(raw: string, ticker = ""): string {
     .map((w) => {
       const bare = w.replace(/[.,]/g, "").toUpperCase();
       if (tick && bare === tick) return w.toUpperCase(); // "ASML Holding NV", not "Asml"
+      if (NAME_FIXES[bare]) return NAME_FIXES[bare];
       if (/^[A-Z]\/[A-Z]$/.test(bare)) return w.toUpperCase(); // "A/S"
       if (bare === "INC" || bare === "CO" || bare === "CORP") return w.charAt(0).toUpperCase() + w.slice(1);
       if (keep.has(bare) && bare.length <= 3 && bare !== "CO") return w.toUpperCase();
@@ -320,7 +362,12 @@ const round = (x: number, step = 0.005) => Number((Math.round(x / step) * step).
 export function inputsFromFacts(f: CompanyFacts, ticker: string, rf: RiskFree = FALLBACK_RF, fx?: Fx | null): LoadResult {
   const warnings: string[] = [];
   const book = reportingBook(f);
-  if (!book) throw new SecDataError(noRevenueReason(f, ticker));
+  if (!book) {
+    if (looksFinancial(f) && !pick(f, C.ebit, "annual")) {
+      throw new SecDataError(`${tidyName(f.entityName, ticker)} is valued with the excess return model.`, "financial");
+    }
+    throw new SecDataError(noRevenueReason(f, ticker));
+  }
   const ifrs = book.tax === "ifrs-full";
   const K = ifrs ? I : C;
   const form = book.form;
@@ -339,6 +386,12 @@ export function inputsFromFacts(f: CompanyFacts, ticker: string, rf: RiskFree = 
     return v === null ? null : v * k;
   };
 
+  // Banks and insurers are valued on equity even when they tag operating income
+  const lends = ["Deposits", "InterestExpenseDeposits"].some((c) => f.facts["us-gaap"]?.[c]);
+  const insures = ["PremiumsEarnedNet", "LiabilityForFuturePolicyBenefits"].some((c) => f.facts["us-gaap"]?.[c]);
+  if ((lends || insures) && looksFinancial(f)) {
+    throw new SecDataError(`${tidyName(f.entityName, ticker)} is ${lends ? "a bank" : "an insurer"}, so Valora values it with the excess return model.`, "financial");
+  }
   const ebitSeries = pick(f, K.ebit, "annual", book);
   let rev = pick(f, K.revenue, "annual", book);
   // Fall back to industry-specific revenue labels when the usual ones are missing or out of date
@@ -346,10 +399,14 @@ export function inputsFromFacts(f: CompanyFacts, ticker: string, rf: RiskFree = 
     const alt = pick(f, C.revenueAlt, "annual", book);
     if (alt && (!rev || latestKey(alt.series) > latestKey(rev.series))) rev = alt;
   }
-  if (!rev) throw new SecDataError(noRevenueReason(f, ticker));
+  if (!rev) {
+    if (!ebitSeries && looksFinancial(f)) throw new SecDataError(`${tidyName(f.entityName, ticker)} is valued with the excess return model.`, "financial");
+    throw new SecDataError(noRevenueReason(f, ticker));
+  }
   if (!ebitSeries || !ebitSeries.series.has(latestKey(rev.series))) {
     throw new SecDataError(
-      `${tidyName(f.entityName, ticker)} doesn't report operating income. That's normal for banks, insurers and real estate trusts (REITs), which analysts value with other methods, like dividends, book value or funds from operations. Try a company that sells products or services.`,
+      `${tidyName(f.entityName, ticker)} doesn't report operating income, which is normal for banks, insurers and real estate trusts (REITs). Valora values these with the excess return model instead.`,
+      "financial",
     );
   }
 
@@ -509,8 +566,11 @@ export function inputsFromFacts(f: CompanyFacts, ticker: string, rf: RiskFree = 
 
 /** Keep only the concepts Valora uses, so fixtures and responses stay small. */
 export function trimFacts(f: CompanyFacts, since = "2019-01-01"): CompanyFacts {
-  const keepGaap = new Set([...Object.values(C).flat(), "CommonStockSharesOutstanding", "WeightedAverageNumberOfDilutedSharesOutstanding", ...DPS.gaap]);
-  const keepIfrs = new Set([...Object.values(I).flat(), ...DPS.ifrs]);
+  const keepGaap = new Set([
+    ...Object.values(C).flat(), "CommonStockSharesOutstanding", "WeightedAverageNumberOfDilutedSharesOutstanding", ...DPS.gaap,
+    ...Object.values(FIN.gaap).flat(), ...Object.values(FIN.markers).flat(),
+  ]);
+  const keepIfrs = new Set([...Object.values(I).flat(), ...DPS.ifrs, ...Object.values(FIN.ifrs).flat()]);
   const slim = (units: Record<string, Fact[]>) =>
     Object.fromEntries(
       Object.entries(units).map(([u, xs]) => [
