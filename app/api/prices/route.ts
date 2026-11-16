@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { computeBeta, isLogoUrl, range52, type Bar, type DayQuote, type MarketData } from "@/lib/market";
 
-// Daily prices from Twelve Data. One request per ticker (cached for hours),
+// Daily prices from Twelve Data. One request per ticker (cached for 20 minutes),
 // plus one shared request for the S&P 500 ETF used to calculate beta.
 // Set TWELVE_DATA_API_KEY in Vercel (Settings > Environment Variables).
 
@@ -45,9 +45,29 @@ function dayQuote(values: Raw[]): DayQuote | undefined {
   };
 }
 
+/** The most recent weekday before today in New York, as YYYY-MM-DD. Its close should always be available. */
+function lastFullSession(now = new Date()): string {
+  const ny = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const d = new Date(Date.UTC(ny.getFullYear(), ny.getMonth(), ny.getDate()));
+  do d.setUTCDate(d.getUTCDate() - 1);
+  while (d.getUTCDay() === 0 || d.getUTCDay() === 6);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Cached prices can be served stale once before they refresh, which after a quiet few days means
+ * showing an old close. If the cached series ends before the last full session, fetch it fresh.
+ */
 async function series(symbol: string, key: string, size: number, revalidate: number): Promise<Raw[]> {
+  const values = await seriesOnce(symbol, key, size, { next: { revalidate } });
+  const latest = values[0]?.datetime.slice(0, 10);
+  if (latest && latest < lastFullSession()) return seriesOnce(symbol, key, size, { cache: "no-store" });
+  return values;
+}
+
+async function seriesOnce(symbol: string, key: string, size: number, init: RequestInit & { next?: { revalidate: number } }): Promise<Raw[]> {
   const url = `${BASE}?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=${size}&apikey=${key}`;
-  const res = await fetch(url, { next: { revalidate } });
+  const res = await fetch(url, init);
   const json = await res.json().catch(() => null);
   if (!json || json.status === "error") {
     const code = json?.code;
@@ -83,7 +103,7 @@ export async function GET(req: Request) {
 
   try {
     const [values, spy, logoUrl] = await Promise.all([
-      series(symbol, key, 1300, 6 * 3600),
+      series(symbol, key, 1300, 20 * 60),
       daily(MARKET_PROXY, key, 600, 12 * 3600).catch(() => [] as Bar[]),
       logo(symbol, key),
     ]);
@@ -102,7 +122,7 @@ export async function GET(req: Request) {
       quote: dayQuote(values),
     };
     return NextResponse.json(data, {
-      headers: { "Cache-Control": "public, s-maxage=21600, stale-while-revalidate=43200" },
+      headers: { "Cache-Control": "public, s-maxage=600, stale-while-revalidate=300" },
     });
   } catch (e) {
     if (e instanceof PriceError) return NextResponse.json({ error: e.message }, { status: e.status });
