@@ -1,6 +1,7 @@
 "use client";
 
 import { TickerSearch } from "./TickerSearch";
+import { FeedbackLink } from "./Feedback";
 
 export interface StartCopy {
   title: string;
@@ -70,7 +71,10 @@ export function StartScreen({
               {loading}
             </span>
           ) : error ? (
-            <span className="start-error">{error}</span>
+            <span className="start-error">
+              {error}{" "}
+              <FeedbackLink ctx={{ ticker, kind: "data", note: `Loading ${ticker.toUpperCase()} showed: "${error}"` }}>Report this</FeedbackLink>
+            </span>
           ) : (
             <span className="start-picks">
               Or try one:

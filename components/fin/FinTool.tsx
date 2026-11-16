@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Menu } from "../Menu";
 import { Mark } from "../ui";
+import { FeedbackLink } from "../Feedback";
 import { TickerSearch } from "../TickerSearch";
 import { ToolNav } from "../ToolNav";
 import { CompanyLogo } from "../CompanyBar";
@@ -270,7 +271,7 @@ export function FinTool({ initial }: { initial?: EquityInputs | null }) {
         <span>Valora is a learning tool, not investment advice.</span>
         <span>
           Made by <a href="https://www.linkedin.com/in/evanlatkiewicz/" target="_blank" rel="noreferrer">Evan Latkiewicz</a>.{" "}
-          <a href="https://github.com/evanlatkiewicz/dcf-builder">Source on GitHub</a>
+          <a href="https://github.com/evanlatkiewicz/ValoraValuations">Source on GitHub</a>. <FeedbackLink ctx={{ ticker: m?.company.ticker }} />
         </span>
       </footer>
     </>

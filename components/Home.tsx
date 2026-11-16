@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Menu } from "./Menu";
 import { Mark } from "./ui";
+import { FeedbackLink } from "./Feedback";
 import { ToolNav } from "./ToolNav";
 import { loadSession } from "@/lib/session";
 import { TOOLS } from "@/lib/tools";
@@ -82,7 +83,7 @@ export function Home() {
         <span>Valora is a learning tool, not investment advice.</span>
         <span>
           Made by <a href="https://www.linkedin.com/in/evanlatkiewicz/" target="_blank" rel="noreferrer">Evan Latkiewicz</a>.{" "}
-          <a href="https://github.com/evanlatkiewicz/dcf-builder">Source on GitHub</a>
+          <a href="https://github.com/evanlatkiewicz/ValoraValuations">Source on GitHub</a>. <FeedbackLink />
         </span>
       </footer>
     </>

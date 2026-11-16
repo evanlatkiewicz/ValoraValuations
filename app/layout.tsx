@@ -6,6 +6,7 @@ import "@fontsource/schibsted-grotesk/800.css";
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/600.css";
 import "./globals.css";
+import { FeedbackDialog } from "@/components/Feedback";
 
 const site = process.env.VERCEL_PROJECT_PRODUCTION_URL
   ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
@@ -22,7 +23,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <FeedbackDialog />
+      </body>
     </html>
   );
 }

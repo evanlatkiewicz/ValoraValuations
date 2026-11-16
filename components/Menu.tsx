@@ -11,6 +11,7 @@ import type { OptionModel } from "@/lib/optionModel";
 import type { EquityInputs } from "@/lib/equity";
 import { accountsEnabled } from "@/lib/supabase";
 import { useUser } from "./useUser";
+import { openFeedback } from "@/lib/feedback";
 
 /**
  * The site menu. On the builder it receives the live model; on the Learn and
@@ -275,6 +276,18 @@ export function Menu({
             {item("/disclaimer", "Disclaimer")}
             {item("/privacy", "Privacy")}
             {item("/contact", "Contact")}
+            {accountsEnabled && (
+              <button
+                role="menuitem"
+                className="menu-item"
+                onClick={() => {
+                  close();
+                  openFeedback({ ticker: finModel?.company.ticker ?? optionModel?.ticker ?? inputs?.company.ticker });
+                }}
+              >
+                Send feedback
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -16,6 +16,7 @@ import { withBeta, withPrice, withRf } from "@/lib/applyMarket";
 import type { RiskFree } from "@/lib/rates";
 import type { DcfInputs, DcfResult } from "@/lib/types";
 import { Mark } from "./ui";
+import { FeedbackLink } from "./Feedback";
 import Link from "next/link";
 import { TickerSearch } from "./TickerSearch";
 import { ToolNav } from "./ToolNav";
@@ -388,7 +389,15 @@ export default function Valora() {
         <div className="intro">
           <div className={`intro-inner notice-${notice.tone}`} role={notice.tone === "error" ? "alert" : "status"}>
             <div>
-              <p>{notice.text}</p>
+              <p>
+                {notice.text}
+                {notice.tone === "error" && (
+                  <>
+                    {" "}
+                    <FeedbackLink ctx={{ ticker, kind: "data", note: `Loading ${ticker.toUpperCase()} showed: "${notice.text}"` }}>Report this</FeedbackLink>
+                  </>
+                )}
+              </p>
               {notice.warnings && notice.warnings.length > 0 && (
                 <ul className="notice-list">
                   {notice.warnings.map((w) => <li key={w}>{w}</li>)}
@@ -417,7 +426,7 @@ export default function Valora() {
         <span>Valora is a learning tool, not investment advice. Check figures against the filings before relying on them.</span>
         <span>
           Made by <a href="https://www.linkedin.com/in/evanlatkiewicz/" target="_blank" rel="noreferrer">Evan Latkiewicz</a>.{" "}
-          <a href="https://github.com/evanlatkiewicz/dcf-builder">Source on GitHub</a>
+          <a href="https://github.com/evanlatkiewicz/ValoraValuations">Source on GitHub</a>. <FeedbackLink ctx={{ ticker: inputs.company.ticker }} />
         </span>
       </footer>
     </>
