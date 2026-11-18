@@ -2,14 +2,13 @@
 // Blue cells are inputs, black cells are formulas, same as the other exports.
 
 import type ExcelJSType from "exceljs";
-import { equitySensitivity, forecastLabels, runEquity, type EquityInputs } from "./equity";
+import { forecastLabels, type EquityInputs } from "./equity";
 
 type ExcelJS = typeof ExcelJSType;
 
 const BLUE = { argb: "FF1F4FBF" };
 const INK = { argb: "FF18201C" };
 const GRAY = { argb: "FF6B7570" };
-const SHADE = { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: "FFE3E8DB" } };
 const MONEY = '#,##0;(#,##0)';
 const PCT = "0.00%";
 const PRICE = '$#,##0.00;($#,##0.00)';
@@ -21,7 +20,7 @@ export function buildFinWorkbook(ExcelJS: ExcelJS, m: EquityInputs) {
   const wb = new ExcelJS.Workbook();
   wb.creator = "Valora";
   wb.calcProperties.fullCalcOnLoad = true;
-  const ws = wb.addWorksheet("Excess return", { views: [{ showGridLines: false }] });
+  const ws = wb.addWorksheet("Excess return");
   const cols = ["D", "E", "F", "G", "H"];
   ws.getColumn(1).width = 2;
   ws.getColumn(2).width = 44;
@@ -120,7 +119,7 @@ export function buildFinWorkbook(ExcelJS: ExcelJS, m: EquityInputs) {
   label(35, "Price to book, model"); formula("C35", "C33/C34", '0.00"x"');
   label(36, "Price to book, market"); formula("C36", "C7/C34", '0.00"x"');
   label(37, "Upside to market price"); formula("C37", "C33/C7-1", "0.0%");
-  for (const c of ["B", "C"]) for (const r of [32, 33]) ws.getCell(`${c}${r}`).fill = SHADE;
+  ws.getCell("C33").border = { top: { style: "thin", color: INK }, bottom: { style: "double", color: INK } };
 
   // History from the filing
   section(39, "Reported history");
@@ -140,35 +139,60 @@ export function buildFinWorkbook(ExcelJS: ExcelJS, m: EquityInputs) {
   label(42, "Dividends plus buybacks");
   label(43, "Return on equity");
 
-  // Sensitivity (values; the grid is the model run 25 times)
-  const ss = wb.addWorksheet("Sensitivity", { views: [{ showGridLines: false }] });
+  // Sensitivity. Each cell reruns the model at a different cost of equity and long-run ROE.
+  // The book equity path doesn't depend on either, so it is read straight from the first sheet.
+  const ss = wb.addWorksheet("Sensitivity");
+  ss.getColumn(1).width = 2;
   ss.getColumn(2).width = 18;
+  for (let i = 3; i <= 8; i++) ss.getColumn(i).width = 13;
   ss.getCell("B1").value = "Value per share: long-run ROE (down) and cost of equity (across)";
   ss.getCell("B1").font = { bold: true, size: 13, color: INK };
-  ss.getCell("B2").value = "Values from Valora at the assumptions in this file. Change inputs on the first sheet to see the main value update.";
+  ss.getCell("B2").value =
+    "Live formulas linked to the Excess return sheet. Change an input there and the grid updates. The middle cell matches that sheet. Edit any blue step to widen or narrow the grid.";
   ss.getCell("B2").font = { italic: true, color: GRAY };
+  const X = (a: string) => `'Excess return'!${a}`;
   const dR = [-0.02, -0.01, 0, 0.01, 0.02];
   const dK = [-0.01, -0.005, 0, 0.005, 0.01];
-  const grid = equitySensitivity(m, dR, dK);
-  const ke = runEquity(m).costOfEquity;
+  const gc = ["C", "D", "E", "F", "G"];
+  ss.getCell("B3").value = "Step";
+  ss.getCell("B3").font = { italic: true, color: GRAY, size: 9 };
+  ss.getCell("H4").value = "Step";
+  ss.getCell("H4").font = { italic: true, color: GRAY, size: 9 };
+  ss.getCell("B4").value = "ROE down, cost of equity across";
+  ss.getCell("B4").font = { bold: true, color: INK, size: 9 };
   dK.forEach((d, j) => {
-    const c = ss.getCell(4, 3 + j);
-    c.value = ke + d;
+    const st = ss.getCell(`${gc[j]}3`);
+    st.value = d;
+    st.numFmt = "0.0%";
+    st.font = { color: BLUE, size: 9 };
+    const c = ss.getCell(`${gc[j]}4`);
+    c.value = { formula: `${X("$C$14")}+${gc[j]}$3` };
     c.numFmt = "0.0%";
-    c.font = { bold: true };
-    c.fill = SHADE;
+    c.font = { bold: true, color: INK };
+    c.border = { bottom: { style: "thin", color: INK } };
   });
+  const book = X("$D$18:$H$18");
+  const income = X("$D$20:$H$20");
+  const years = X("$D$17:$H$17");
   dR.forEach((d, i) => {
-    const h = ss.getCell(5 + i, 2);
-    h.value = m.longRunRoe + d;
+    const r = 5 + i;
+    const st = ss.getCell(`H${r}`);
+    st.value = d;
+    st.numFmt = "0.0%";
+    st.font = { color: BLUE, size: 9 };
+    const h = ss.getCell(`B${r}`);
+    h.value = { formula: `${X("$C$12")}+$H${r}` };
     h.numFmt = "0.0%";
-    h.font = { bold: true };
-    h.fill = SHADE;
-    grid[i].forEach((v, j) => {
-      const c = ss.getCell(5 + i, 3 + j);
-      c.value = Number.isFinite(v) ? v : "n/a";
-      c.numFmt = PRICE;
-      if (i === 2 && j === 2) c.font = { bold: true };
+    h.font = { bold: true, color: INK };
+    gc.forEach((c, j) => {
+      const ke = `${c}$4`;
+      const roe = `$B${r}`;
+      const pvExcess = `SUMPRODUCT(${income}-${ke}*${book},1/(1+${ke})^${years})`;
+      const tvPv = `(${roe}-${ke})*${X("$H$22")}/(${ke}-${X("$C$13")})/(1+${ke})^5`;
+      const cell = ss.getCell(`${c}${r}`);
+      cell.value = { formula: `IF(OR(${ke}<=${X("$C$13")},${ke}<=0),"n/a",(${X("$C$5")}+${pvExcess}+${tvPv})/${X("$C$6")})` };
+      cell.numFmt = PRICE;
+      cell.font = { color: INK, bold: i === 2 && j === 2 };
     });
   });
   return wb;

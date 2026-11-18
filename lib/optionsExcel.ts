@@ -10,7 +10,6 @@ type ExcelJS = typeof ExcelJSType;
 const BLUE = { argb: "FF1F4FBF" };
 const INK = { argb: "FF18201C" };
 const GRAY = { argb: "FF6B7570" };
-const SHADE = { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: "FFE3E8DB" } };
 const PRICE = '$#,##0.00;($#,##0.00)';
 const PCT = "0.00%";
 const NUM4 = "0.0000";
@@ -55,7 +54,7 @@ export function buildOptionWorkbook(ExcelJS: ExcelJS, m: OptionModel) {
   const wb = new ExcelJS.Workbook();
   wb.creator = "Valora";
   wb.calcProperties.fullCalcOnLoad = true;
-  const ws = wb.addWorksheet("Black-Scholes", { views: [{ showGridLines: false }] });
+  const ws = wb.addWorksheet("Black-Scholes");
   ws.getColumn(1).width = 2;
   ws.getColumn(2).width = 40;
   ws.getColumn(3).width = 15;
@@ -164,10 +163,10 @@ export function buildOptionWorkbook(ExcelJS: ExcelJS, m: OptionModel) {
   ws.getCell("B43").value =
     "To find the volatility a market price implies, use Data > What-If Analysis > Goal Seek: set C27 (or D27 for a put) to the market price by changing C9.";
   ws.getCell("B43").font = { italic: true, color: GRAY };
-  for (const r of [27]) for (const c of ["B", "C", "D"]) ws.getCell(`${c}${r}`).fill = SHADE;
+  for (const c of ["C", "D"]) ws.getCell(`${c}27`).border = { top: { style: "thin", color: INK }, bottom: { style: "double", color: INK } };
 
   // Sensitivity: the focused option's value across share prices and volatilities, all live.
-  const ss = wb.addWorksheet("Sensitivity", { views: [{ showGridLines: false }] });
+  const ss = wb.addWorksheet("Sensitivity");
   ss.getColumn(1).width = 2;
   ss.getColumn(2).width = 16;
   for (let i = 0; i < 5; i++) ss.getColumn(3 + i).width = 13;
@@ -182,7 +181,7 @@ export function buildOptionWorkbook(ExcelJS: ExcelJS, m: OptionModel) {
     c.value = { formula: `${ref("C5")}*(1+${d})` };
     c.numFmt = PRICE;
     c.font = { bold: true, color: INK };
-    c.fill = SHADE;
+    c.border = { bottom: { style: "thin", color: INK } };
   });
   steps.forEach((dv, j) => {
     const row = 5 + j;
@@ -190,7 +189,6 @@ export function buildOptionWorkbook(ExcelJS: ExcelJS, m: OptionModel) {
     h.value = { formula: `MAX(0.01,${ref("C9")}+${dv})` };
     h.numFmt = "0%";
     h.font = { bold: true, color: INK };
-    h.fill = SHADE;
     cols.forEach((col) => {
       const c = ss.getCell(`${col}${row}`);
       c.value = { formula: bsFormula(`${col}$4`, `$B${row}`, m.type) };

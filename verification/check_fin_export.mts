@@ -3,7 +3,7 @@
 import ExcelJS from "exceljs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { buildFinWorkbook } from "../lib/finExcel.ts";
-import { runEquity } from "../lib/equity.ts";
+import { equitySensitivity, runEquity } from "../lib/equity.ts";
 import { equityFromFacts } from "../lib/secFin.ts";
 
 const dir = new URL("./export-fin/", import.meta.url);
@@ -15,7 +15,7 @@ for (const t of Object.keys(price)) {
   const m = { ...equityFromFacts(f, t).inputs, sharePrice: price[t], beta: 1.1 };
   writeFileSync(new URL(`${t}.xlsx`, dir), Buffer.from(await buildFinWorkbook(ExcelJS, m).xlsx.writeBuffer()));
   const r = runEquity(m);
-  expected[t] = { costOfEquity: r.costOfEquity, sumPv: r.sumPv, tvPv: r.terminal.pv, equity: r.equityValue, perShare: r.valuePerShare, impliedPb: r.impliedPriceToBook };
+  expected[t] = { costOfEquity: r.costOfEquity, sumPv: r.sumPv, tvPv: r.terminal.pv, equity: r.equityValue, perShare: r.valuePerShare, impliedPb: r.impliedPriceToBook, grid: equitySensitivity(m, [-0.02, -0.01, 0, 0.01, 0.02], [-0.01, -0.005, 0, 0.005, 0.01]) };
 }
 writeFileSync(new URL("expected.json", dir), JSON.stringify(expected, null, 2));
 console.log("wrote", Object.keys(expected).length);

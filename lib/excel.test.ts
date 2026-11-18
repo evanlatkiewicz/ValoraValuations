@@ -14,6 +14,17 @@ describe("Excel export", () => {
     const buf = await wb.xlsx.writeBuffer();
     expect(buf.byteLength).toBeGreaterThan(5000);
   });
+  it("keeps the sensitivity and scenario sheets live, with no cell fills", () => {
+    const wb = buildWorkbook(ExcelJS, APPLE);
+    const f = (sheet: string, a: string) => (wb.getWorksheet(sheet)!.getCell(a).value as { formula?: string })?.formula ?? "";
+    expect(f("Sensitivity", "E9")).toContain("DCF!");
+    expect(f("Sensitivity", "E19")).toContain("SUMPRODUCT");
+    for (const a of ["C5", "C6", "C7", "C9", "C10"]) expect(f("Scenarios", a)).not.toBe("");
+    wb.eachSheet((ws) => {
+      expect(ws.views?.[0]?.showGridLines).not.toBe(false);
+      ws.eachRow((row) => row.eachCell((c) => expect(c.fill?.type).toBeUndefined()));
+    });
+  });
   it("names the file after the company", () => {
     expect(workbookName(APPLE)).toBe("Valora_AAPL_FY2026.xlsx");
   });
