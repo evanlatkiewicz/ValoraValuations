@@ -2,16 +2,14 @@
 // Blue cells are inputs, black cells are formulas, same as the other exports.
 
 import type ExcelJSType from "exceljs";
+import { borders, C, F, FONT, sheet, titleBlock } from "./xlsxStyle";
 import { forecastLabels, type EquityInputs } from "./equity";
 
 type ExcelJS = typeof ExcelJSType;
 
-const BLUE = { argb: "FF1F4FBF" };
-const INK = { argb: "FF18201C" };
-const GRAY = { argb: "FF6B7570" };
-const MONEY = '#,##0;(#,##0)';
-const PCT = "0.00%";
-const PRICE = '$#,##0.00;($#,##0.00)';
+const MONEY = F.num;
+const PCT = F.pct2;
+const PRICE = F.price;
 
 /** Cell addresses of the key outputs, so tests can read them back. */
 export const FIN_CELLS = { costOfEquity: "C14", sumPv: "C28", tvPv: "C31", equity: "C32", perShare: "C33", impliedPb: "C35" };
@@ -20,46 +18,18 @@ export function buildFinWorkbook(ExcelJS: ExcelJS, m: EquityInputs) {
   const wb = new ExcelJS.Workbook();
   wb.creator = "Valora";
   wb.calcProperties.fullCalcOnLoad = true;
-  const ws = wb.addWorksheet("Excess return");
   const cols = ["D", "E", "F", "G", "H"];
-  ws.getColumn(1).width = 2;
-  ws.getColumn(2).width = 44;
-  ws.getColumn(3).width = 15;
-  cols.forEach((_, i) => (ws.getColumn(4 + i).width = 14));
-  ws.getColumn(9).width = 70;
+  const w = sheet(wb, "Excess return", { labelWidth: 46, dataCols: 6, dataWidth: 12, notesWidth: 70 });
+  const ws = w.ws;
+  ws.views = [{ state: "frozen", xSplit: 2, ySplit: 0 }];
 
-  const label = (r: number, t: string, bold = false) => {
-    const c = ws.getCell(`B${r}`);
-    c.value = t;
-    c.font = { bold, color: INK };
-  };
-  const input = (a: string, v: number, fmt: string) => {
-    const c = ws.getCell(a);
-    c.value = v;
-    c.numFmt = fmt;
-    c.font = { color: BLUE };
-  };
-  const formula = (a: string, f: string, fmt: string, bold = false) => {
-    const c = ws.getCell(a);
-    c.value = { formula: f };
-    c.numFmt = fmt;
-    c.font = { color: INK, bold };
-  };
-  const note = (r: number, t?: string) => {
-    if (!t) return;
-    const c = ws.getCell(`I${r}`);
-    c.value = t;
-    c.font = { italic: true, color: GRAY, size: 9 };
-  };
-  const section = (r: number, t: string) => {
-    label(r, t, true);
-    ws.getCell(`B${r}`).border = { bottom: { style: "thin", color: INK } };
-  };
+  const label = (r: number, t: string, bold = false) => w.label(r, t, bold ? { bold: true } : { indent: 1 });
+  const input = (a: string, v: number, fmt: string) => w.input(a, v, fmt);
+  const formula = (a: string, f: string, fmt: string, bold = false) => w.calc(a, f, fmt, { bold });
+  const note = (r: number, t?: string) => w.note(r, t);
+  const section = (r: number, t: string) => w.section(r, t);
 
-  ws.getCell("B1").value = `${m.company.name} (${m.company.ticker}): excess return model`;
-  ws.getCell("B1").font = { bold: true, size: 14, color: INK };
-  ws.getCell("B2").value = `Base year ${m.company.baseYearLabel}. $ in millions except per share. Blue cells are inputs; black cells are formulas. Built with Valora.`;
-  ws.getCell("B2").font = { italic: true, color: GRAY };
+  titleBlock(w, `${m.company.name} (${m.company.ticker})`, "Excess return model", `($ in millions, except per share data). Base year ${m.company.baseYearLabel}.`, true);
 
   section(4, "Inputs");
   label(5, "Common book equity, end of base year"); input("C5", m.bookEquity, MONEY); note(5, m.sources.history?.note);
@@ -79,18 +49,11 @@ export function buildFinWorkbook(ExcelJS: ExcelJS, m: EquityInputs) {
   cols.forEach((c, i) => input(`${c}16`, m.roe[i], PCT));
   note(16, m.sources.roe?.note);
   label(17, "Year");
-  cols.forEach((c, i) => {
-    const cell = ws.getCell(`${c}17`);
-    cell.value = i + 1;
-    cell.font = { color: GRAY };
-  });
-  cols.forEach((c, i) => {
-    const h = ws.getCell(`${c}15`);
-    h.value = labels[i];
-    h.font = { bold: true, color: INK };
-    h.alignment = { horizontal: "right" };
-    h.border = { bottom: { style: "thin", color: INK } };
-  });
+  cols.forEach((c, i) => w.input(`${c}17`, i + 1, F.int).font = { name: "Arial", size: 10, color: C.gray });
+  w.heads(15, cols, labels.map((l) => `${l}E`));
+  w.label(15, "Five-year forecast", { bold: true });
+  ws.getCell("B15").border = { bottom: borders.thin };
+  ws.getCell("C15").border = { bottom: borders.thin };
 
   const rows: [number, string, (c: string, prev: string | null) => string, string, boolean?][] = [
     [18, "Book equity, start of year", (c, p) => (p ? `${p}22` : "$C$5"), MONEY],
@@ -118,17 +81,15 @@ export function buildFinWorkbook(ExcelJS: ExcelJS, m: EquityInputs) {
   label(34, "Book value per share"); formula("C34", "C5/C6", PRICE);
   label(35, "Price to book, model"); formula("C35", "C33/C34", '0.00"x"');
   label(36, "Price to book, market"); formula("C36", "C7/C34", '0.00"x"');
-  label(37, "Upside to market price"); formula("C37", "C33/C7-1", "0.0%");
-  ws.getCell("C33").border = { top: { style: "thin", color: INK }, bottom: { style: "double", color: INK } };
+  label(37, "Upside to market price"); formula("C37", "C33/C7-1", F.pct);
+  w.total(32, ["C"]);
+  w.final(33, ["C"]);
 
   // History from the filing
   section(39, "Reported history");
   m.history.forEach((h, i) => {
     const col = cols[i] ?? cols.at(-1)!;
-    const hc = ws.getCell(`${col}39`);
-    hc.value = h.label;
-    hc.font = { bold: true, color: INK };
-    hc.alignment = { horizontal: "right" };
+    w.heads(39, [col], [`${h.label}A`], { rule: false });
     input(`${col}40`, h.netIncome, MONEY);
     input(`${col}41`, h.bookEquity, MONEY);
     input(`${col}42`, h.payouts, MONEY);
@@ -141,60 +102,40 @@ export function buildFinWorkbook(ExcelJS: ExcelJS, m: EquityInputs) {
 
   // Sensitivity. Each cell reruns the model at a different cost of equity and long-run ROE.
   // The book equity path doesn't depend on either, so it is read straight from the first sheet.
-  const ss = wb.addWorksheet("Sensitivity");
-  ss.getColumn(1).width = 2;
-  ss.getColumn(2).width = 18;
-  for (let i = 3; i <= 8; i++) ss.getColumn(i).width = 13;
-  ss.getCell("B1").value = "Value per share: long-run ROE (down) and cost of equity (across)";
-  ss.getCell("B1").font = { bold: true, size: 13, color: INK };
-  ss.getCell("B2").value =
-    "Live formulas linked to the Excess return sheet. Change an input there and the grid updates. The middle cell matches that sheet. Edit any blue step to widen or narrow the grid.";
-  ss.getCell("B2").font = { italic: true, color: GRAY };
+  const sw = sheet(wb, "Sensitivity", { labelWidth: 30, dataCols: 6, dataWidth: 12 });
+  const ss = sw.ws;
+  titleBlock(sw, `${m.company.name} (${m.company.ticker})`, "Value per share by long-run ROE and cost of equity", "Live formulas linked to the Excess return sheet. The boxed cell matches that sheet.", true);
   const X = (a: string) => `'Excess return'!${a}`;
   const dR = [-0.02, -0.01, 0, 0.01, 0.02];
   const dK = [-0.01, -0.005, 0, 0.005, 0.01];
   const gc = ["C", "D", "E", "F", "G"];
-  ss.getCell("B3").value = "Step";
-  ss.getCell("B3").font = { italic: true, color: GRAY, size: 9 };
-  ss.getCell("H4").value = "Step";
-  ss.getCell("H4").font = { italic: true, color: GRAY, size: 9 };
-  ss.getCell("B4").value = "ROE down, cost of equity across";
-  ss.getCell("B4").font = { bold: true, color: INK, size: 9 };
+  const stepFont = { name: FONT, size: 8, color: C.input };
+  sw.text("B3", "Step from the model", { italic: true, gray: true, size: 8 });
+  sw.text("H4", "Step", { italic: true, gray: true, size: 8, align: "right" });
+  sw.text("B4", "Long-run ROE (down), cost of equity (across)", { bold: true, size: 9 });
   dK.forEach((d, j) => {
-    const st = ss.getCell(`${gc[j]}3`);
-    st.value = d;
-    st.numFmt = "0.0%";
-    st.font = { color: BLUE, size: 9 };
-    const c = ss.getCell(`${gc[j]}4`);
-    c.value = { formula: `${X("$C$14")}+${gc[j]}$3` };
-    c.numFmt = "0.0%";
-    c.font = { bold: true, color: INK };
-    c.border = { bottom: { style: "thin", color: INK } };
+    sw.input(`${gc[j]}3`, d, F.pctStep).font = stepFont;
+    sw.calc(`${gc[j]}4`, `${X("$C$14")}+${gc[j]}$3`, F.pct, { bold: true });
+    ss.getCell(`${gc[j]}4`).border = { bottom: borders.thin };
   });
   const book = X("$D$18:$H$18");
   const income = X("$D$20:$H$20");
   const years = X("$D$17:$H$17");
   dR.forEach((d, i) => {
     const r = 5 + i;
-    const st = ss.getCell(`H${r}`);
-    st.value = d;
-    st.numFmt = "0.0%";
-    st.font = { color: BLUE, size: 9 };
-    const h = ss.getCell(`B${r}`);
-    h.value = { formula: `${X("$C$12")}+$H${r}` };
-    h.numFmt = "0.0%";
-    h.font = { bold: true, color: INK };
+    sw.input(`H${r}`, d, F.pctStep).font = stepFont;
+    sw.calc(`B${r}`, `${X("$C$12")}+$H${r}`, F.pct, { bold: true });
+    ss.getCell(`B${r}`).border = { right: borders.thin };
     gc.forEach((c, j) => {
       const ke = `${c}$4`;
       const roe = `$B${r}`;
       const pvExcess = `SUMPRODUCT(${income}-${ke}*${book},1/(1+${ke})^${years})`;
       const tvPv = `(${roe}-${ke})*${X("$H$22")}/(${ke}-${X("$C$13")})/(1+${ke})^5`;
-      const cell = ss.getCell(`${c}${r}`);
-      cell.value = { formula: `IF(OR(${ke}<=${X("$C$13")},${ke}<=0),"n/a",(${X("$C$5")}+${pvExcess}+${tvPv})/${X("$C$6")})` };
-      cell.numFmt = PRICE;
-      cell.font = { color: INK, bold: i === 2 && j === 2 };
+      sw.calc(`${c}${r}`, `IF(OR(${ke}<=${X("$C$13")},${ke}<=0),"n/a",(${X("$C$5")}+${pvExcess}+${tvPv})/${X("$C$6")})`, F.price, { bold: i === 2 && j === 2 });
     });
   });
+  ss.getCell("E7").border = { top: borders.thin, bottom: borders.thin, left: borders.thin, right: borders.thin };
+  sw.text("B11", "The small blue steps are inputs: change one to widen or narrow the grid.", { italic: true, gray: true, size: 8 });
   return wb;
 }
 

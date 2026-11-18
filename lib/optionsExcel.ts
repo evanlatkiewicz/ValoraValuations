@@ -3,17 +3,15 @@
 // from d1 to the Greeks and the sensitivity grid, recalculates in Excel.
 
 import type ExcelJSType from "exceljs";
+import { borders, F, sheet, titleBlock } from "./xlsxStyle";
 import type { OptionModel } from "./optionModel";
 
 type ExcelJS = typeof ExcelJSType;
 
-const BLUE = { argb: "FF1F4FBF" };
-const INK = { argb: "FF18201C" };
-const GRAY = { argb: "FF6B7570" };
-const PRICE = '$#,##0.00;($#,##0.00)';
-const PCT = "0.00%";
-const NUM4 = "0.0000";
-const DATE = "mmm d, yyyy";
+const PRICE = F.price;
+const PCT = F.pct2;
+const NUM4 = "0.0000_);(0.0000)";
+const DATE = F.date;
 
 /** Cell addresses of the key outputs, so tests can read them back. */
 export const OPTION_CELLS = {
@@ -54,53 +52,22 @@ export function buildOptionWorkbook(ExcelJS: ExcelJS, m: OptionModel) {
   const wb = new ExcelJS.Workbook();
   wb.creator = "Valora";
   wb.calcProperties.fullCalcOnLoad = true;
-  const ws = wb.addWorksheet("Black-Scholes");
-  ws.getColumn(1).width = 2;
-  ws.getColumn(2).width = 40;
-  ws.getColumn(3).width = 15;
-  ws.getColumn(4).width = 15;
-  ws.getColumn(5).width = 80;
+  const w = sheet(wb, "Black-Scholes", { labelWidth: 44, dataCols: 2, dataWidth: 13, notesWidth: 80 });
+  const ws = w.ws;
+  ws.views = [{ state: "frozen", xSplit: 2, ySplit: 0 }];
+  const NOTE_COL = "F";
 
-  const label = (r: number, text: string, bold = false) => {
-    const c = ws.getCell(`B${r}`);
-    c.value = text;
-    c.font = { bold, color: INK };
-  };
-  const input = (addr: string, v: number | Date, fmt: string) => {
-    const c = ws.getCell(addr);
-    c.value = v;
-    c.numFmt = fmt;
-    c.font = { color: BLUE };
-  };
-  const formula = (addr: string, f: string, fmt: string, bold = false) => {
-    const c = ws.getCell(addr);
-    c.value = { formula: f };
-    c.numFmt = fmt;
-    c.font = { color: INK, bold };
-  };
-  const note = (r: number, text: string) => {
-    const c = ws.getCell(`E${r}`);
-    c.value = text;
-    c.font = { italic: true, color: GRAY, size: 9 };
-  };
+  const label = (r: number, text: string, bold = false) => w.label(r, text, bold ? { bold: true } : { indent: 1 });
+  const input = (addr: string, v: number | Date, fmt: string) => w.input(addr, v, fmt);
+  const formula = (addr: string, f: string, fmt: string, bold = false) => w.calc(addr, f, fmt, { bold });
+  const note = (r: number, text: string) => text && w.note(r, text);
   const section = (r: number, text: string, heads?: [string, string]) => {
-    label(r, text, true);
-    ws.getCell(`B${r}`).border = { bottom: { style: "thin", color: INK } };
-    if (heads) {
-      for (const [col, h] of [["C", heads[0]], ["D", heads[1]]] as const) {
-        const c = ws.getCell(`${col}${r}`);
-        c.value = h;
-        c.font = { bold: true, color: INK };
-        c.alignment = { horizontal: "right" };
-        c.border = { bottom: { style: "thin", color: INK } };
-      }
-    }
+    w.section(r, text);
+    if (heads) w.heads(r, ["C", "D"], heads, { rule: false });
   };
 
-  ws.getCell("B1").value = `${m.name} (${m.ticker}): ${m.type === "call" ? "call" : "put"} option, Black-Scholes`;
-  ws.getCell("B1").font = { bold: true, size: 14, color: INK };
-  ws.getCell("B2").value = "Per share unless noted. Blue cells are inputs you can change; black cells are formulas. Built with Valora.";
-  ws.getCell("B2").font = { italic: true, color: GRAY };
+  titleBlock(w, `${m.name} (${m.ticker})`, `${m.type === "call" ? "Call" : "Put"} option, Black-Scholes`, "Per share unless noted.", true);
+  void NOTE_COL;
 
   section(4, "Inputs");
   label(5, "Share price (S)"); input("C5", m.S, PRICE); note(5, m.sources.S ?? "");
@@ -129,7 +96,7 @@ export function buildOptionWorkbook(ExcelJS: ExcelJS, m: OptionModel) {
   note(24, "Used by gamma, vega and theta.");
 
   section(26, "Value", ["Call", "Put"]);
-  label(27, "Black-Scholes price", true);
+  label(27, "Black-Scholes value", true);
   formula("C27", "C5*EXP(-C11*C15)*C20-C6*EXP(-C16*C15)*C21", PRICE, true);
   formula("D27", "C6*EXP(-C16*C15)*C23-C5*EXP(-C11*C15)*C22", PRICE, true);
   note(27, "Call = S·e^(−qT)·N(d1) − K·e^(−rT)·N(d2). Put = K·e^(−rT)·N(−d2) − S·e^(−qT)·N(−d1).");
@@ -138,7 +105,7 @@ export function buildOptionWorkbook(ExcelJS: ExcelJS, m: OptionModel) {
   note(29, "What the option would be worth if exercised today.");
   label(30, "Time value"); formula("C30", "C27-C29", PRICE); formula("D30", "D27-D29", PRICE);
   label(31, "Breakeven at expiration"); formula("C31", "C6+C27", PRICE); formula("D31", "C6-D27", PRICE);
-  label(32, "Chance it finishes in the money"); formula("C32", "C21", "0.0%"); formula("D32", "C23", "0.0%");
+  label(32, "Chance it finishes in the money"); formula("C32", "C21", F.pct); formula("D32", "C23", F.pct);
   note(32, "Risk-neutral probability, not a forecast.");
   label(33, "Put-call parity check (should be 0)"); formula("C33", "(C27-D27)-(C5*EXP(-C11*C15)-C6*EXP(-C16*C15))", "0.000000");
   note(33, "Call − put must equal S·e^(−qT) − K·e^(−rT). Any other result means a formula is wrong.");
@@ -162,41 +129,27 @@ export function buildOptionWorkbook(ExcelJS: ExcelJS, m: OptionModel) {
   label(42, "Implied volatility", true);
   ws.getCell("B43").value =
     "To find the volatility a market price implies, use Data > What-If Analysis > Goal Seek: set C27 (or D27 for a put) to the market price by changing C9.";
-  ws.getCell("B43").font = { italic: true, color: GRAY };
-  for (const c of ["C", "D"]) ws.getCell(`${c}27`).border = { top: { style: "thin", color: INK }, bottom: { style: "double", color: INK } };
+  ws.getCell("B43").font = { name: "Arial", italic: true, color: { argb: "FF595959" }, size: 9 };
+  w.final(27, ["C", "D"]);
 
   // Sensitivity: the focused option's value across share prices and volatilities, all live.
-  const ss = wb.addWorksheet("Sensitivity");
-  ss.getColumn(1).width = 2;
-  ss.getColumn(2).width = 16;
-  for (let i = 0; i < 5; i++) ss.getColumn(3 + i).width = 13;
-  ss.getCell("B1").value = `${m.type === "call" ? "Call" : "Put"} value by share price (across) and volatility (down)`;
-  ss.getCell("B1").font = { bold: true, size: 13, color: INK };
-  ss.getCell("B2").value = "Linked to the Black-Scholes sheet. Change an input there and this grid updates.";
-  ss.getCell("B2").font = { italic: true, color: GRAY };
+  const sw = sheet(wb, "Sensitivity", { labelWidth: 26, dataCols: 5, dataWidth: 12 });
+  titleBlock(sw, `${m.name} (${m.ticker})`, `${m.type === "call" ? "Call" : "Put"} value by share price and volatility`, "Live formulas linked to the Black-Scholes sheet.", true);
   const steps = [-0.1, -0.05, 0, 0.05, 0.1];
   const cols = ["C", "D", "E", "F", "G"];
+  sw.text("B4", "Volatility (down), share price (across)", { bold: true });
   steps.forEach((d, i) => {
-    const c = ss.getCell(`${cols[i]}4`);
-    c.value = { formula: `${ref("C5")}*(1+${d})` };
-    c.numFmt = PRICE;
-    c.font = { bold: true, color: INK };
-    c.border = { bottom: { style: "thin", color: INK } };
+    sw.calc(`${cols[i]}4`, `${ref("C5")}*(1+${d})`, PRICE, { bold: true });
+    sw.ws.getCell(`${cols[i]}4`).border = { bottom: borders.thin };
   });
   steps.forEach((dv, j) => {
     const row = 5 + j;
-    const h = ss.getCell(`B${row}`);
-    h.value = { formula: `MAX(0.01,${ref("C9")}+${dv})` };
-    h.numFmt = "0%";
-    h.font = { bold: true, color: INK };
-    cols.forEach((col) => {
-      const c = ss.getCell(`${col}${row}`);
-      c.value = { formula: bsFormula(`${col}$4`, `$B${row}`, m.type) };
-      c.numFmt = PRICE;
-      c.font = { color: INK, bold: j === 2 && col === "E" };
-      if (j === 2 && col === "E") c.border = { top: { style: "medium" }, bottom: { style: "medium" }, left: { style: "medium" }, right: { style: "medium" } };
-    });
+    sw.calc(`B${row}`, `MAX(0.01,${ref("C9")}+${dv})`, "0%_)", { bold: true });
+    sw.ws.getCell(`B${row}`).border = { right: borders.thin };
+    cols.forEach((col) => sw.calc(`${col}${row}`, bsFormula(`${col}$4`, `$B${row}`, m.type), PRICE, { bold: j === 2 && col === "E" }));
   });
+  sw.ws.getCell("E7").border = { top: borders.thin, bottom: borders.thin, left: borders.thin, right: borders.thin };
+  sw.text("B11", "The boxed cell matches the Black-Scholes sheet. Share prices move 5% a step; volatility moves 5 points a step.", { italic: true, gray: true, size: 8 });
 
   return wb;
 }
